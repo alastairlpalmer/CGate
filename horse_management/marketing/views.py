@@ -54,28 +54,27 @@ def root(request):
         response = dashboard(request)
     else:
         response = render(request, 'marketing/home.html', {
-            'page': 'home', 'features': content.HOME_FEATURES, 'yard_links': content.YARD_LINKS,
-            'steps': content.STEPS, 'audiences': content.AUDIENCES,
+            'page': 'home', 'plans': content.PLANS, 'addons': content.ADDONS, 'steps': content.STEPS,
+            'beliefs': content.BELIEFS, 'partner_percent': content.PARTNER_PERCENT, 'offer_months': content.OFFER_MONTHS,
         })
     # The same address gives two pages, chosen by the session cookie.
     patch_vary_headers(response, ('Cookie',))
     return response
 
 
-def _page(template, name, extra=None):
+def _home_section(anchor):
+    """The old Features and About pages are sections of Home now."""
     @require_GET
     def view(request):
         if not site_enabled():
             raise Http404
-        return render(request, template, {'page': name, **(extra or {})})
-    view.__name__ = name
+        return redirect(f'/#{anchor}', permanent=True)
     return view
 
 
-features = _page('marketing/features.html', 'features', {
-    'plans': content.PLANS, 'addons': content.ADDONS,
-    'partner_percent': content.PARTNER_PERCENT, 'offer_months': content.OFFER_MONTHS,
-})
+features = _home_section('features')
+
+
 @require_GET
 def pricing(request):
     """The Pricing page and its calculator. ``?plan=pro&horses=22&addon=training`` opens it with that quote."""
@@ -92,7 +91,7 @@ def pricing(request):
     })
 
 
-about = _page('marketing/about.html', 'about', {'beliefs': content.BELIEFS})
+about = _home_section('about')
 
 
 @require_http_methods(['GET', 'HEAD', 'POST'])

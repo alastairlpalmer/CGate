@@ -63,10 +63,8 @@ ADDONS = [
 ]
 _ADDONS = {addon['key']: addon for addon in ADDONS}
 
-# Groups and add-ons by key, for the Home and Features pages.
+# Every feature group, for checks (tests).
 FEATURES = CORE_GROUPS + PRO_GROUPS
-_BY_KEY = {group['key']: group for group in FEATURES}
-HOME_FEATURES = [_BY_KEY[key] for key in ('horses', 'health', 'maps', 'invoicing', 'xero', 'support')]
 
 EXAMPLE_HORSES = 20
 # Over this many horses, or more than one yard: a price to suit.
@@ -156,24 +154,10 @@ PRICING_FAQ = [
 ]
 
 # Home page lists.
-YARD_LINKS = [
-    ('horses', 'horses', 'Horses and owners'),
-    ('health', 'health', 'Health, farrier and vet'),
-    ('maps', 'locations', 'Interactive horse maps'),
-    ('invoicing', 'invoicing', 'Invoicing and Xero'),
-]
-
 STEPS = [
     ('Set up your yard', 'Add your horses, owners, stables and livery rates.'),
     ('Record the day', 'Moves, health jobs, visits and extras, on a phone in the yard.'),
     ('Send the invoices', 'Made each month from what you recorded, and sent to owners and to Xero.'),
-]
-
-AUDIENCES = [
-    ('manager', 'Yard managers', 'The whole yard on one screen: horses, stables, money and what is due.'),
-    ('staff', 'Staff', 'Their own login, with only the parts they need.'),
-    ('owners', 'Owners', 'Clear invoices, and reminders before health dates are due.'),
-    ('cvet', 'Vets and farriers', 'Every visit and treatment recorded against the horse.'),
 ]
 
 BELIEFS = [

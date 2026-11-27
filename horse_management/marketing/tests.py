@@ -5,7 +5,8 @@ from django.urls import reverse
 
 from core.roles_testutils import make_user_with_access
 
-PAGES = ('marketing:features', 'marketing:pricing', 'marketing:about', 'marketing:contact')
+PAGES = ('marketing:pricing', 'marketing:contact')
+OLD_PAGES = ('marketing:features', 'marketing:about')
 
 
 @override_settings(MARKETING_SITE_ENABLED=True)
@@ -38,6 +39,20 @@ class SiteOnTests(TestCase):
         self.assertIn(reverse('login'), response['Location'])
         response = self.client.post('/')
         self.assertNotEqual(response.status_code, 200)
+
+    def test_the_old_features_and_about_pages_go_to_their_home_sections(self):
+        self.assertRedirects(self.client.get(reverse('marketing:features')), '/#features',
+                             status_code=301, fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(reverse('marketing:about')), '/#about',
+                             status_code=301, fetch_redirect_response=False)
+
+    def test_home_holds_the_features_and_about_sections(self):
+        from .content import ADDONS, FEATURES
+
+        html = self.client.get('/').content.decode()
+        for key in ['features', 'about'] + [item['key'] for item in FEATURES + ADDONS]:
+            self.assertIn(f'id="{key}"', html)
+        self.assertIn('Interactive map tracking of horses', html)
 
     def test_each_page_opens_for_a_visitor(self):
         for name in PAGES:
@@ -83,7 +98,7 @@ class SiteOffTests(TestCase):
         self.assertIn(reverse('login'), response['Location'])
 
     def test_the_pages_are_not_found(self):
-        for name in PAGES:
+        for name in PAGES + OLD_PAGES:
             self.assertEqual(self.client.get(reverse(name)).status_code, 404, name)
 
     def test_the_sign_in_page_has_no_home_link(self):
@@ -244,13 +259,6 @@ class PricingTests(TestCase):
         self.assertIn('50% off your first 6 months: £60.50 a month', html)
         self.assertRegex(html, r'name="horses" value="22"')
         self.assertRegex(html, r'value="offer"[^>]*checked')
-
-    def test_the_features_page_links_match_the_anchors(self):
-        from .content import ADDONS, FEATURES
-
-        html = self.client.get(reverse('marketing:features')).content.decode()
-        for item in FEATURES + ADDONS:
-            self.assertIn(f'id="{item["key"]}"', html)
 
 
 @override_settings(

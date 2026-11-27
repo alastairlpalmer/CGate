@@ -7,33 +7,24 @@
 
 {# ── The two plans ── #}
 <section class="bg-white" aria-label="Plans">
-    <div class="mx-auto grid max-w-5xl items-start gap-6 px-4 pt-16 sm:px-6 md:grid-cols-2 lg:px-8 lg:pt-20">
+    <div class="mx-auto grid max-w-5xl items-stretch gap-6 px-4 pt-12 sm:px-6 md:grid-cols-2 lg:px-8">
         {% for plan in plans %}
-        <article class="mk-reveal relative flex flex-col rounded-3xl border bg-white p-8 transition duration-300 hover:shadow-xl hover:shadow-forest/10 {% if plan.recommended %}border-forest shadow-xl shadow-forest/10{% else %}border-sand{% endif %}" style="--d:{{ forloop.counter0 }}00ms" aria-labelledby="plan-{{ plan.key }}">
+        <article class="mk-reveal relative flex flex-col rounded-3xl border bg-white p-6 sm:p-7 transition duration-300 hover:shadow-xl hover:shadow-forest/10 {% if plan.recommended %}border-forest shadow-xl shadow-forest/10{% else %}border-sand{% endif %}" style="--d:{{ forloop.counter0 }}00ms" aria-labelledby="plan-{{ plan.key }}">
             {% if plan.recommended %}<span class="absolute -top-3 left-8 rounded-full bg-forest px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white">Recommended</span>{% endif %}
             <div class="flex items-baseline justify-between gap-4">
                 <h2 id="plan-{{ plan.key }}" class="font-heading text-3xl font-semibold text-forest">{{ plan.name }}</h2>
                 <span class="rounded-full bg-meadow/10 px-3 py-1 text-xs font-semibold text-meadow">Onboarding included</span>
             </div>
             <p class="mt-1 text-sage">{{ plan.for }}</p>
-            <p class="mt-6 flex items-baseline gap-2">
-                <span class="font-heading text-6xl tracking-[-0.02em] text-charcoal">{{ plan.price_label }}</span>
+            <p class="mt-4 flex items-baseline gap-2">
+                <span class="font-heading text-5xl tracking-[-0.02em] text-charcoal">{{ plan.price_label }}</span>
                 <span class="text-sage">per horse, per month</span>
             </p>
-            <a href="?plan={{ plan.key }}#calculator" data-choose-plan="{{ plan.key }}" class="mt-6 inline-flex h-12 items-center justify-center rounded-full px-6 font-semibold transition {% if plan.recommended %}bg-saddle text-white hover:bg-saddle-dark{% else %}border border-forest text-forest hover:bg-forest hover:text-white{% endif %}">Work out my price</a>
+            <a href="?plan={{ plan.key }}#calculator" data-choose-plan="{{ plan.key }}" class="mt-5 inline-flex h-11 items-center justify-center rounded-full px-6 font-semibold transition {% if plan.recommended %}bg-saddle text-white hover:bg-saddle-dark{% else %}border border-forest text-forest hover:bg-forest hover:text-white{% endif %}">Work out my price</a>
 
-            <div class="mt-8 space-y-6 border-t border-sand pt-6">
-                {% if plan.includes %}<p class="text-sm font-semibold uppercase tracking-wider text-sage">{{ plan.includes }}</p>{% endif %}
-                {% for group in plan.groups %}
-                <div>
-                    <p class="flex items-center gap-2 font-heading font-semibold text-forest">{% include "marketing/_icon.html" with name=group.icon cls="h-5 w-5" %}{{ group.title }}</p>
-                    <ul class="mt-2 space-y-1.5 pl-7">
-                        {% for point in group.points %}
-                        <li class="flex gap-2 text-sm text-charcoal"><span class="mt-0.5 text-meadow">{% include "marketing/_icon.html" with name="check" cls="h-4 w-4" %}</span>{{ point }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endfor %}
+            <div class="mt-6 border-t border-sand pt-5">
+                {% if plan.includes %}<p class="text-xs font-semibold uppercase tracking-wider text-sage">{{ plan.includes }}</p>{% endif %}
+                {% include "marketing/_groups.html" with groups=plan.groups %}
             </div>
         </article>
         {% endfor %}
@@ -45,18 +36,18 @@ The calculator. The server fills in the quote, so the page is right without
 the script; js/marketing.js does the same sum as marketing.content.quote().
 {% endcomment %}
 <section id="calculator" class="scroll-mt-20 bg-white" aria-labelledby="calc-title">
-    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+    <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
         <div class="mk-reveal mx-auto max-w-2xl text-center">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">Your price</p>
-            <h2 id="calc-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">Work out your price</h2>
+            <h2 id="calc-title" class="mt-2 font-heading text-3xl sm:text-4xl font-normal tracking-[-0.02em] text-forest">Work out your price</h2>
         </div>
-        <form class="mt-12 grid items-start gap-8 lg:grid-cols-[1.35fr_1fr]" data-calculator data-months="{{ offer_months }}" data-offer="{{ offer_percent }}" data-partner="{{ partner_percent }}" action="{% url 'marketing:contact' %}" method="get">
-            <div class="space-y-6" data-calc-inputs>
+        <form class="mt-8 grid items-start gap-8 lg:grid-cols-[1.35fr_1fr]" data-calculator data-months="{{ offer_months }}" data-offer="{{ offer_percent }}" data-partner="{{ partner_percent }}" action="{% url 'marketing:contact' %}" method="get">
+            <div class="mk-reveal divide-y divide-sand rounded-3xl border border-sand bg-white" data-calc-inputs>
                 {# Plan #}
-                <fieldset class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8">
+                <fieldset class="p-6 sm:p-7">
                     <legend class="sr-only">Plan</legend>
-                    <p class="font-heading text-xl font-semibold text-charcoal" aria-hidden="true">1. Choose a plan</p>
-                    <div class="mt-5 grid grid-cols-2 gap-3">
+                    <p class="font-heading text-lg font-semibold text-charcoal" aria-hidden="true">1. Plan</p>
+                    <div class="mt-4 grid grid-cols-2 gap-3">
                         {% for plan in plans %}
                         <label class="cursor-pointer rounded-2xl border border-sand p-4 transition hover:border-forest/50 has-[:checked]:border-forest has-[:checked]:bg-parchment/60 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-forest/30">
                             <input type="radio" name="plan" value="{{ plan.key }}" data-plan data-price="{{ plan.price }}" data-name="{{ plan.name }}" {% if plan.key == quote.plan.key %}checked{% endif %} class="sr-only">
@@ -68,9 +59,9 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
                 </fieldset>
 
                 {# Horses #}
-                <div class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8" style="--d:100ms">
+                <div class="p-6 sm:p-7">
                     <div class="flex flex-wrap items-center justify-between gap-4">
-                        <label for="calc-horses" class="font-heading text-xl font-semibold text-charcoal">2. How many horses?</label>
+                        <label for="calc-horses" class="font-heading text-lg font-semibold text-charcoal">2. Horses</label>
                         <div class="flex items-center rounded-full border border-sand">
                             <button type="button" data-step="-1" class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-forest transition hover:bg-parchment" aria-label="One horse fewer">&minus;</button>
                             <input id="calc-horses" name="horses" type="number" inputmode="numeric" min="1" max="2000" value="{{ quote.horses }}" data-horses
@@ -78,19 +69,18 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
                             <button type="button" data-step="1" class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-forest transition hover:bg-parchment" aria-label="One horse more">+</button>
                         </div>
                     </div>
-                    <input type="range" min="1" max="{{ large_yard }}" value="{{ quote.horses }}" data-horse-slider aria-label="Number of horses" class="mk-range mt-6 w-full">
+                    <input type="range" min="1" max="{{ large_yard }}" value="{{ quote.horses }}" data-horse-slider aria-label="Number of horses" class="mk-range mt-5 w-full">
                     <div class="mt-2 flex justify-between text-xs text-sage"><span>1</span><span>{{ large_yard }}+</span></div>
                 </div>
 
                 {# Add-ons #}
-                <fieldset class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8" style="--d:200ms">
+                <fieldset class="p-6 sm:p-7">
                     <legend class="sr-only">Add-ons</legend>
-                    <p class="font-heading text-xl font-semibold text-charcoal" aria-hidden="true">3. Add-ons <span class="text-base font-normal text-sage">(optional)</span></p>
-                    <p class="mt-1 text-sage">Help us build these. Add one for {{ partner_percent }}% off your first {{ offer_months }} months.</p>
-                    <ul class="mt-5 space-y-3">
+                    <p class="font-heading text-lg font-semibold text-charcoal" aria-hidden="true">3. Add-ons <span class="text-sm font-normal text-sage">(optional, {{ partner_percent }}% off)</span></p>
+                    <ul class="mt-4 space-y-3">
                         {% for addon in addons %}
                         <li>
-                            <label class="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-sand p-4 transition hover:border-saddle/60 has-[:checked]:border-solid has-[:checked]:border-saddle has-[:checked]:bg-parchment/60 sm:gap-4">
+                            <label class="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-sand px-4 py-3 transition hover:border-saddle/60 has-[:checked]:border-solid has-[:checked]:border-saddle has-[:checked]:bg-parchment/60 sm:gap-4">
                                 <span class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-parchment text-saddle sm:flex">{% include "marketing/_icon.html" with name=addon.icon %}</span>
                                 <span class="min-w-0 flex-1">
                                     <span class="flex flex-wrap items-center gap-2 font-semibold text-charcoal">{{ addon.name }}<span class="rounded-full bg-saddle/10 px-2 py-0.5 text-xs font-semibold text-saddle">{{ addon.status }}</span></span>
@@ -150,25 +140,25 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
 </section>
 
 <section class="bg-parchment/60" aria-labelledby="faq-title">
-    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-3 lg:px-8">
+    <div class="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:px-8">
         <div class="mk-reveal">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">FAQ</p>
-            <h2 id="faq-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">Questions</h2>
+            <h2 id="faq-title" class="mt-2 font-heading text-3xl sm:text-4xl font-normal tracking-[-0.02em] text-forest">Questions</h2>
             <p class="mt-4 text-sage">More than {{ large_yard }} horses, or more than one yard? <a href="{% url 'marketing:contact' %}?topic=pricing" class="font-semibold text-forest underline">Ask us for a price</a>.</p>
         </div>
         <div class="border-t border-sand lg:col-span-2">
             {% for question, answer in faq %}
             <details class="mk-faq mk-reveal group border-b border-sand" style="--d:{{ forloop.counter0 }}00ms">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-6 font-heading text-lg font-semibold text-charcoal hover:text-forest">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-heading text-lg font-semibold text-charcoal hover:text-forest">
                     {{ question }}
                     <span class="mk-chevron text-sage transition-transform duration-300">{% include "marketing/_icon.html" with name="chevron" cls="h-5 w-5" %}</span>
                 </summary>
-                <p class="-mt-2 pb-6 pr-10 leading-relaxed text-sage">{{ answer }}</p>
+                <p class="-mt-1 pb-4 pr-10 leading-relaxed text-sage">{{ answer }}</p>
             </details>
             {% endfor %}
         </div>
     </div>
 </section>
 
-{% include "marketing/_cta.html" %}
+{# No "Book a demo" band here: "Claim this offer" above does that job. #}
 {% endblock %}
