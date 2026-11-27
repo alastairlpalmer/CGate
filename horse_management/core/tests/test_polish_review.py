@@ -71,3 +71,24 @@ class ErrorTextTests(TestCase):
         texts = [str(m) for m in get_messages(response.wsgi_request)]
         self.assertTrue(texts)
         self.assertFalse(any(t.startswith("['") for t in texts), texts)
+
+
+class InvoiceEmailBalanceTests(TestCase):
+    def test_a_part_paid_invoice_email_says_what_is_still_owed(self):
+        from datetime import date
+        from decimal import Decimal
+
+        from django.template.loader import render_to_string
+
+        from core.models import BusinessSettings, Owner
+        from invoicing.models import Invoice, Payment
+
+        invoice = Invoice.objects.create(
+            owner=Owner.objects.create(name='Anna'), invoice_number='EM1', period_start=date(2026, 6, 1),
+            period_end=date(2026, 6, 30), status=Invoice.Status.SENT, total=Decimal('100.00'),
+        )
+        Payment.objects.create(invoice=invoice, amount=Decimal('40.00'), date=date(2026, 7, 1))
+        html = render_to_string('notifications/email/invoice.html',
+                                {'invoice': invoice, 'business': BusinessSettings.get_settings()})
+        self.assertIn('£60.00', html)
+        self.assertIn('£40.00', html)

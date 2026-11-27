@@ -28,9 +28,20 @@
                 <td><strong>Due Date:</strong></td>
                 <td>{{ invoice.due_date|date:"j M Y" }}</td>
             </tr>
+            {% if invoice.amount_paid %}
+            <tr>
+                <td><strong>Invoice Total:</strong></td>
+                <td>{{ invoice.total|gbp }}</td>
+            </tr>
+            <tr>
+                <td><strong>Paid So Far:</strong></td>
+                <td>{{ invoice.amount_paid|gbp }}</td>
+            </tr>
+            {% endif %}
             <tr>
                 <td><strong>Amount Due:</strong></td>
-                <td class="amount">{{ invoice.total|gbp }}</td>
+                {# What is still owed: a part-paid invoice sent again showed the full total. #}
+                <td class="amount">{{ invoice.balance_due|gbp }}</td>
             </tr>
         </table>
     </div>
