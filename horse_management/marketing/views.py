@@ -53,7 +53,8 @@ def root(request):
         response = dashboard(request)
     else:
         response = render(request, 'marketing/home.html', {
-            'page': 'home', 'features': content.HOME_FEATURES,
+            'page': 'home', 'features': content.HOME_FEATURES, 'yard_links': content.YARD_LINKS,
+            'steps': content.STEPS, 'audiences': content.AUDIENCES,
         })
     # The same address gives two pages, chosen by the session cookie.
     patch_vary_headers(response, ('Cookie',))
@@ -70,11 +71,11 @@ def _page(template, name, extra=None):
     return view
 
 
-features = _page('marketing/features.html', 'features', {'features': content.FEATURES})
+features = _page('marketing/features.html', 'features', {'features': content.FEATURES, 'plans': content.PLANS})
 pricing = _page('marketing/pricing.html', 'pricing', {
     'plans': content.PLANS, 'example_horses': content.EXAMPLE_HORSES, 'faq': content.PRICING_FAQ, 'large_yard': content.LARGE_YARD_HORSES,
 })
-about = _page('marketing/about.html', 'about')
+about = _page('marketing/about.html', 'about', {'beliefs': content.BELIEFS})
 
 
 @require_http_methods(['GET', 'HEAD', 'POST'])
@@ -111,7 +112,7 @@ def contact(request):
         else:
             status = 400
     return render(request, 'marketing/contact.html', {
-        'page': 'contact', 'form': form, 'sent': sent,
+        'page': 'contact', 'form': form, 'sent': sent, 'next_steps': content.CONTACT_STEPS,
     }, status=status)
 
 

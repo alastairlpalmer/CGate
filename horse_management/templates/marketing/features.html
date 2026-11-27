@@ -3,35 +3,48 @@
 {% block og_title %}Features - Cgate{% endblock %}
 {% block description %}Horses, owners, invoicing and Xero, health records, farrier and vet apps: everything a livery yard needs in Cgate.{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with title="Everything a livery yard needs, in one app" intro="Horses, owners, invoicing, health records, vets and farriers. Built for the yard and the office." %}
+{% include "marketing/_page_intro.html" with eyebrow="Features" title="Everything a livery yard needs, in one app" intro="Horses, owners, invoicing, health records, vets and farriers. Built for the yard and the office." %}
 
-<nav aria-label="Features on this page" class="border-b border-sand bg-white">
-    <ul class="mx-auto flex max-w-7xl flex-wrap gap-x-6 gap-y-2 px-4 py-5 text-sm font-medium text-sage sm:px-6 lg:px-8">
-        {% for feature in features %}<li><a href="#{{ feature.key }}" class="hover:text-forest hover:underline">{{ feature.title }}</a></li>{% endfor %}
+{# Jump links: one per feature, grouped by plan. #}
+<nav aria-label="Features on this page" class="sticky top-16 z-30 border-b border-sand bg-white/90 backdrop-blur-md lg:top-20">
+    <ul class="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-3 text-sm font-medium sm:px-6 lg:px-8">
+        {% for plan in plans %}{% for feature in plan.feature_list %}
+        <li class="shrink-0"><a href="#{{ feature.key }}" class="inline-flex items-center rounded-full border border-sand px-3 py-1.5 text-sage transition hover:border-forest hover:text-forest">{{ feature.title }}</a></li>
+        {% endfor %}{% endfor %}
     </ul>
 </nav>
 
-<div class="bg-white">
-    {% for feature in features %}
-    <section id="{{ feature.key }}" class="scroll-mt-24 border-b border-sand" aria-labelledby="{{ feature.key }}-title">
-        <div class="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:gap-12 lg:px-8 lg:py-20">
+{% for plan in plans %}
+<section class="{% cycle 'bg-white' 'bg-parchment/60' %}" aria-labelledby="group-{{ plan.key }}">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div class="mk-reveal flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-                <p class="text-sm font-semibold uppercase tracking-wider text-saddle">{{ feature.plan }} plan</p>
-                <h2 id="{{ feature.key }}-title" class="mt-2 font-heading text-3xl font-normal tracking-tight text-forest sm:text-4xl">{{ feature.title }}</h2>
-                <p class="mt-4 text-lg text-sage">{{ feature.line }}</p>
+                <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">{{ plan.name }} plan · {{ plan.price_label }} per horse</p>
+                <h2 id="group-{{ plan.key }}" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">{{ plan.for }}</h2>
+                {% if plan.includes %}<p class="mt-2 text-sage">{{ plan.includes }}</p>{% endif %}
             </div>
-            <ul class="space-y-4 self-center">
-                {% for point in feature.points %}
-                <li class="flex gap-3 text-lg text-charcoal">
-                    <svg class="mt-1 h-5 w-5 shrink-0 text-meadow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
-                    <span>{{ point }}</span>
-                </li>
-                {% endfor %}
-            </ul>
+            <a href="{% url 'marketing:pricing' %}" class="group inline-flex shrink-0 items-center gap-2 font-semibold text-forest">See pricing {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}</a>
         </div>
-    </section>
-    {% endfor %}
-</div>
+        <div class="mt-12 grid gap-5 md:grid-cols-2">
+            {% for feature in plan.feature_list %}
+            <article id="{{ feature.key }}" class="mk-reveal scroll-mt-40 rounded-3xl {% if forloop.last and not forloop.counter|divisibleby:2 %}md:col-span-2{% endif %} border border-sand bg-white p-8 transition duration-300 hover:shadow-xl hover:shadow-forest/10" style="--d:{{ forloop.counter0 }}00ms" aria-labelledby="{{ feature.key }}-title">
+                <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-forest text-white">{% include "marketing/_icon.html" with name=feature.key %}</span>
+                <h3 id="{{ feature.key }}-title" class="mt-6 font-heading text-2xl font-semibold text-forest">{{ feature.title }}</h3>
+                <p class="mt-2 text-lg leading-relaxed text-sage">{{ feature.line }}</p>
+                <ul class="mt-6 space-y-3 border-t border-sand pt-6">
+                    {% for point in feature.points %}
+                    <li class="flex gap-3 text-charcoal">
+                        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-meadow/15 text-meadow">{% include "marketing/_icon.html" with name="check" cls="h-3.5 w-3.5" %}</span>
+                        <span>{{ point }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endfor %}
 
 {% include "marketing/_cta.html" %}
 {% endblock %}

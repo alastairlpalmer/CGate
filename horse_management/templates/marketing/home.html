@@ -1,84 +1,134 @@
 {% extends "marketing/base.html" %}
 {% block title %}Cgate: run your livery yard from one place{% endblock %}
 {% block content %}
-{# Hero. Phase 3 puts the aerial yard photo and its overlays here; until then a plain brand gradient. #}
-<section class="relative flex min-h-svh flex-col justify-end overflow-hidden bg-forest text-white" aria-labelledby="hero-title">
+{# ── Hero: words at left, the animated yard plan at right (marketing/_hero_art.html) ── #}
+<section class="relative overflow-hidden bg-forest text-white" aria-labelledby="hero-title">
     <div class="absolute inset-0 bg-gradient-to-br from-forest-light via-forest to-charcoal" aria-hidden="true"></div>
-    <svg class="absolute inset-0 h-full w-full opacity-15" aria-hidden="true" focusable="false">
-        <defs><pattern id="hero-grid" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M56 0H0V56" fill="none" stroke="currentColor" stroke-width="1"/></pattern></defs>
+    <svg class="absolute inset-0 h-full w-full text-white opacity-[0.07]" aria-hidden="true" focusable="false">
+        <defs><pattern id="hero-grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="currentColor" stroke-width="1"/></pattern></defs>
         <rect width="100%" height="100%" fill="url(#hero-grid)"/>
     </svg>
-    <div class="relative mx-auto grid w-full max-w-7xl gap-8 px-4 pb-16 pt-32 sm:px-6 lg:grid-cols-2 lg:items-end lg:px-8 lg:pb-24">
+    <div class="absolute -right-40 -top-40 h-[480px] w-[480px] rounded-full bg-sage-light/20 blur-3xl" aria-hidden="true"></div>
+
+    <div class="relative mx-auto grid min-h-svh max-w-7xl items-center gap-12 px-4 pb-16 pt-28 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-8 lg:px-8 lg:pb-20 lg:pt-32">
         <div>
-            <h1 id="hero-title" class="font-heading text-5xl font-normal leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">Your yard,<br>in one place</h1>
-            <div class="mt-8 flex flex-wrap gap-3">
-                <a href="{% url 'marketing:contact' %}" class="inline-flex h-12 items-center rounded-full bg-saddle px-6 font-semibold text-white hover:bg-saddle-dark">Book a demo</a>
-                <a href="{% url 'marketing:features' %}" class="inline-flex h-12 items-center rounded-full border border-white/70 px-6 font-semibold text-white hover:bg-white/10">See features</a>
+            <p class="mk-fade-in inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-sm font-medium text-white/85" style="--d:.05s">
+                <span class="h-1.5 w-1.5 rounded-full bg-sand"></span>Livery yard management
+            </p>
+            <h1 id="hero-title" class="mk-fade-in mt-6 font-heading text-5xl font-normal leading-[1.02] tracking-[-0.02em] sm:text-6xl lg:text-7xl" style="--d:.15s">Your yard,<br>in one place</h1>
+            <p class="mk-fade-in mt-6 max-w-lg text-lg leading-relaxed text-white/80 sm:text-xl" style="--d:.3s">Horses, owners, invoices and health records. On your phone in the yard, and on the computer in the office.</p>
+            <div class="mk-fade-in mt-10 flex flex-wrap gap-3" style="--d:.45s">
+                <a href="{% url 'marketing:contact' %}" class="group inline-flex h-12 items-center gap-2 rounded-full bg-saddle px-6 font-semibold text-white shadow-lg shadow-black/20 transition hover:bg-saddle-dark">
+                    Book a demo {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}
+                </a>
+                <a href="{% url 'marketing:features' %}" class="inline-flex h-12 items-center rounded-full border border-white/40 px-6 font-semibold text-white transition hover:border-white hover:bg-white/10">See features</a>
             </div>
+            <ul class="mk-fade-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/70" style="--d:.6s">
+                <li class="flex items-center gap-2">{% include "marketing/_icon.html" with name="check" cls="h-4 w-4 text-sand" %}Works with Xero</li>
+                <li class="flex items-center gap-2">{% include "marketing/_icon.html" with name="check" cls="h-4 w-4 text-sand" %}Phone, tablet and computer</li>
+                <li class="flex items-center gap-2">{% include "marketing/_icon.html" with name="check" cls="h-4 w-4 text-sand" %}Daily backups</li>
+            </ul>
         </div>
-        <p class="max-w-md text-lg text-white/85 lg:justify-self-end">Horses, owners, invoices and health records. On your phone in the yard, and on the computer in the office.</p>
+        {% include "marketing/_hero_art.html" %}
     </div>
 </section>
 
-{# Taranis-style: big headline at left, a linked list with thin lines at right. #}
+{# ── The whole yard, linked list (Taranis style) ── #}
 <section class="bg-white" aria-labelledby="what-title">
-    <div class="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
-        <h2 id="what-title" class="font-heading text-4xl font-normal leading-tight tracking-tight text-forest sm:text-5xl">One app for the whole yard</h2>
+    <div class="mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-32">
+        <div class="mk-reveal">
+            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">One app</p>
+            <h2 id="what-title" class="mt-3 font-heading text-4xl font-normal leading-[1.1] tracking-[-0.02em] text-forest sm:text-5xl">Everything about the yard, in one place</h2>
+            <p class="mt-6 max-w-md text-lg text-sage">Stop moving between whiteboards, notebooks and spreadsheets. Record a job once, and Cgate does the rest.</p>
+        </div>
         <ul class="border-t border-sand">
-            <li class="border-b border-sand"><a href="{% url 'marketing:features' %}#yard" class="flex items-baseline justify-between gap-4 py-6 hover:text-saddle"><span class="font-heading text-2xl text-forest">Horses and owners</span><span class="text-2xl text-sage" aria-hidden="true">&rarr;</span></a></li>
-            <li class="border-b border-sand"><a href="{% url 'marketing:features' %}#invoicing" class="flex items-baseline justify-between gap-4 py-6 hover:text-saddle"><span class="font-heading text-2xl text-forest">Invoicing and Xero</span><span class="text-2xl text-sage" aria-hidden="true">&rarr;</span></a></li>
-            <li class="border-b border-sand"><a href="{% url 'marketing:features' %}#health" class="flex items-baseline justify-between gap-4 py-6 hover:text-saddle"><span class="font-heading text-2xl text-forest">Health records</span><span class="text-2xl text-sage" aria-hidden="true">&rarr;</span></a></li>
-            <li class="border-b border-sand"><a href="{% url 'marketing:features' %}#cvet" class="flex items-baseline justify-between gap-4 py-6 hover:text-saddle"><span class="font-heading text-2xl text-forest">Vets and farriers</span><span class="text-2xl text-sage" aria-hidden="true">&rarr;</span></a></li>
+            {% for key, title in yard_links %}
+            <li class="mk-reveal border-b border-sand" style="--d:{{ forloop.counter0 }}00ms">
+                <a href="{% url 'marketing:features' %}#{{ key }}" class="group flex items-center justify-between gap-4 py-6">
+                    <span class="flex items-center gap-4">
+                        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-parchment text-forest transition group-hover:bg-forest group-hover:text-white">{% include "marketing/_icon.html" with name=key %}</span>
+                        <span class="font-heading text-2xl text-forest">{{ title }}</span>
+                    </span>
+                    <span class="text-sage transition-transform group-hover:translate-x-1 group-hover:text-saddle">{% include "marketing/_icon.html" with name="arrow" %}</span>
+                </a>
+            </li>
+            {% endfor %}
         </ul>
     </div>
 </section>
 
-<section class="bg-parchment" aria-labelledby="features-title">
-    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-        <h2 id="features-title" class="max-w-2xl font-heading text-4xl font-normal leading-tight tracking-tight text-forest sm:text-5xl">Less paperwork, fewer missed dates, invoices that add up</h2>
-        <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+{# ── A look at the app: a drawn dashboard, not a screenshot ── #}
+<section class="overflow-hidden bg-parchment" aria-labelledby="preview-title">
+    <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div class="mk-reveal mx-auto max-w-2xl text-center">
+            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">At a glance</p>
+            <h2 id="preview-title" class="mt-3 font-heading text-4xl font-normal leading-[1.1] tracking-[-0.02em] text-forest sm:text-5xl">See what needs doing today</h2>
+            <p class="mt-5 text-lg text-sage">The dashboard shows what is due, who has paid and where every horse is.</p>
+        </div>
+        {% include "marketing/_dashboard_mock.html" %}
+    </div>
+</section>
+
+{# ── Feature cards ── #}
+<section class="bg-white" aria-labelledby="features-title">
+    <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div class="mk-reveal flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">Features</p>
+                <h2 id="features-title" class="mt-3 max-w-2xl font-heading text-4xl font-normal leading-[1.1] tracking-[-0.02em] text-forest sm:text-5xl">Less paperwork, fewer missed dates, invoices that add up</h2>
+            </div>
+            <a href="{% url 'marketing:features' %}" class="group inline-flex shrink-0 items-center gap-2 font-semibold text-forest">See all features {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}</a>
+        </div>
+        <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {% for feature in features %}
-            <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-sand hover:ring-forest">
-                <h3 class="font-heading text-xl font-semibold text-forest group-hover:underline">{{ feature.title }}</h3>
-                <p class="mt-2 text-sage">{{ feature.line }}</p>
+            <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="mk-reveal group rounded-2xl border border-sand bg-white p-7 transition duration-300 hover:-translate-y-1 hover:border-forest/40 hover:shadow-xl hover:shadow-forest/10" style="--d:{{ forloop.counter0 }}00ms">
+                <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-parchment text-forest transition group-hover:bg-forest group-hover:text-white">{% include "marketing/_icon.html" with name=feature.key %}</span>
+                <h3 class="mt-6 font-heading text-xl font-semibold text-forest">{{ feature.title }}</h3>
+                <p class="mt-2 leading-relaxed text-sage">{{ feature.line }}</p>
             </a>
             {% endfor %}
         </div>
-        <a href="{% url 'marketing:features' %}" class="mt-10 inline-flex font-semibold text-forest hover:underline">See all features <span aria-hidden="true">&nbsp;&rarr;</span></a>
     </div>
 </section>
 
+{# ── How it works: three steps on a line that draws across ── #}
 <section class="bg-white" aria-labelledby="how-title">
-    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-        <h2 id="how-title" class="font-heading text-4xl font-normal tracking-tight text-forest sm:text-5xl">How it works</h2>
-        <ol class="mt-12 grid gap-10 md:grid-cols-3">
-            <li class="border-t-2 border-forest pt-6">
-                <span class="font-heading text-sm font-semibold text-saddle">Step 1</span>
-                <h3 class="mt-2 font-heading text-2xl text-forest">Add your horses and owners</h3>
-                <p class="mt-2 text-sage">Set up your horses, owners, stables and livery rates.</p>
-            </li>
-            <li class="border-t-2 border-forest pt-6">
-                <span class="font-heading text-sm font-semibold text-saddle">Step 2</span>
-                <h3 class="mt-2 font-heading text-2xl text-forest">Record the day</h3>
-                <p class="mt-2 text-sage">Moves, health jobs, visits and extras, on a phone in the yard.</p>
-            </li>
-            <li class="border-t-2 border-forest pt-6">
-                <span class="font-heading text-sm font-semibold text-saddle">Step 3</span>
-                <h3 class="mt-2 font-heading text-2xl text-forest">Invoices go out each month</h3>
-                <p class="mt-2 text-sage">Made from what you recorded, and sent to owners and to Xero.</p>
-            </li>
-        </ol>
+    <div class="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8 lg:pb-32">
+        <div class="mk-reveal rounded-3xl bg-parchment px-6 py-14 sm:px-12 lg:px-16 lg:py-20">
+            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">How it works</p>
+            <h2 id="how-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest sm:text-5xl">Three steps to a calmer month end</h2>
+            <div class="relative mt-14">
+                <div class="mk-line absolute left-6 right-6 top-6 hidden h-px bg-forest/30 md:block" aria-hidden="true"></div>
+                <ol class="relative grid gap-10 md:grid-cols-3">
+                    {% for title, text in steps %}
+                    <li>
+                        <span class="flex h-12 w-12 items-center justify-center rounded-full bg-forest font-heading text-lg font-semibold text-white ring-8 ring-parchment">{{ forloop.counter }}</span>
+                        <h3 class="mt-6 font-heading text-2xl text-forest">{{ title }}</h3>
+                        <p class="mt-2 leading-relaxed text-sage">{{ text }}</p>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
     </div>
 </section>
 
-<section class="bg-forest text-white" aria-labelledby="who-title">
-    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-        <h2 id="who-title" class="font-heading text-4xl font-normal tracking-tight sm:text-5xl">For everyone at the yard</h2>
-        <div class="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-            <div><h3 class="font-heading text-xl font-semibold">Yard managers</h3><p class="mt-2 text-white/80">The whole yard on one screen: horses, stables, money and what is due.</p></div>
-            <div><h3 class="font-heading text-xl font-semibold">Staff</h3><p class="mt-2 text-white/80">Their own login, with only the parts they need.</p></div>
-            <div><h3 class="font-heading text-xl font-semibold">Owners</h3><p class="mt-2 text-white/80">Clear invoices, and reminders before health dates are due.</p></div>
-            <div><h3 class="font-heading text-xl font-semibold">Vets and farriers</h3><p class="mt-2 text-white/80">Their own phone page to record visits at the stable door.</p></div>
+{# ── Who it is for ── #}
+<section class="relative overflow-hidden bg-forest text-white" aria-labelledby="who-title">
+    <div class="absolute -bottom-40 -left-40 h-[420px] w-[420px] rounded-full bg-sage-light/15 blur-3xl" aria-hidden="true"></div>
+    <div class="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div class="mk-reveal max-w-2xl">
+            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-sand">For everyone</p>
+            <h2 id="who-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] sm:text-5xl">Made for everyone at the yard</h2>
+        </div>
+        <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {% for icon, title, text in audiences %}
+            <div class="mk-reveal rounded-2xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm" style="--d:{{ forloop.counter0 }}00ms">
+                <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-sand">{% include "marketing/_icon.html" with name=icon %}</span>
+                <h3 class="mt-6 font-heading text-xl font-semibold">{{ title }}</h3>
+                <p class="mt-2 leading-relaxed text-white/75">{{ text }}</p>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </section>

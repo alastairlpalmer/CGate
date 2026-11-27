@@ -1,9 +1,17 @@
-<section class="border-t border-sand bg-parchment" aria-labelledby="cta-title">
-    <div class="mx-auto flex max-w-7xl flex-col items-start gap-6 px-4 py-20 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-        <div>
-            <h2 id="cta-title" class="font-heading text-3xl font-normal tracking-tight text-forest sm:text-4xl">See Cgate on your yard</h2>
-            <p class="mt-2 text-lg text-sage">We show you the app with your own horses and owners.</p>
+<section class="bg-white" aria-labelledby="cta-title">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div class="mk-reveal relative overflow-hidden rounded-3xl bg-forest px-6 py-14 text-white sm:px-12 lg:px-16">
+            <div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-sage-light/25 blur-3xl" aria-hidden="true"></div>
+            <svg class="absolute inset-0 h-full w-full text-white opacity-[0.06]" aria-hidden="true" focusable="false"><rect width="100%" height="100%" fill="url(#cta-grid)"/><defs><pattern id="cta-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="currentColor"/></pattern></defs></svg>
+            <div class="relative flex flex-col items-start gap-8 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h2 id="cta-title" class="font-heading text-3xl font-normal tracking-[-0.02em] sm:text-4xl">See Cgate on your yard</h2>
+                    <p class="mt-3 max-w-lg text-lg text-white/80">We show you the app with your own horses and owners.</p>
+                </div>
+                <a href="{% url 'marketing:contact' %}" class="group inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-saddle px-6 font-semibold text-white shadow-lg shadow-black/20 transition hover:bg-saddle-dark">
+                    Book a demo {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}
+                </a>
+            </div>
         </div>
-        <a href="{% url 'marketing:contact' %}" class="inline-flex h-12 items-center rounded-full bg-saddle px-6 font-semibold text-white hover:bg-saddle-dark">Book a demo</a>
     </div>
 </section>

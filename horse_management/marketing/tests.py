@@ -54,6 +54,8 @@ class SiteOnTests(TestCase):
             self.assertNotIn('htmx', html, url)
             self.assertNotIn('alpine', html.lower(), url)
             self.assertIn('js/marketing.js', html, url)
+            self.assertIn('css/marketing.css', html, url)
+            self.assertNotIn('css/styles.css', html, url)
             self.assertEqual(html.count('<h1'), 1, url)
             self.assertIn('property="og:title"', html, url)
             self.assertIn(f'rel="canonical" href="http://testserver{url}"', html, url)
@@ -186,7 +188,13 @@ class PricingTests(TestCase):
         for name, price, yard in (('Essentials', '5', '100'), ('Professional', '7.50', '150'), ('Complete', '10', '200')):
             self.assertIn(name, html)
             self.assertIn(f'£{price}</span>', html)
-            self.assertIn(f'A 20-horse yard pays £{yard} a month', html)
+            self.assertIn(f'data-per-horse="{price}">£{yard}</strong> a month', html)
+
+    def test_the_slider_starts_at_the_example_and_stops_at_the_large_yard_size(self):
+        from .content import EXAMPLE_HORSES, LARGE_YARD_HORSES
+
+        html = self.client.get(reverse('marketing:pricing')).content.decode()
+        self.assertIn(f'max="{LARGE_YARD_HORSES}" value="{EXAMPLE_HORSES}"', html)
 
     def test_every_feature_is_in_exactly_one_plan(self):
         from .content import FEATURES, PLANS

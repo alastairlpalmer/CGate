@@ -1,0 +1,81 @@
+{% comment %}
+The Home hero: a plan of a yard seen from above, drawn in SVG. Outlines
+draw in, one stable block is "x-rayed" to show its stalls, and dots carry
+data along lines to the office. The cards are HTML, so the words stay sharp.
+Decoration only: the same facts are in the page text (aria-hidden).
+Every animation stops with prefers-reduced-motion (input.css, mk-*).
+{% endcomment %}
+<div class="relative mx-auto w-full max-w-[620px]" aria-hidden="true">
+    <svg viewBox="0 0 560 460" class="h-auto w-full" fill="none">
+        <defs>
+            <pattern id="mk-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v8" stroke="#88A6AD" stroke-opacity=".25" stroke-width="2"/></pattern>
+            <filter id="mk-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect x="6" y="6" width="548" height="448" rx="28" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-opacity=".12"/>
+
+        {# Fields #}
+        <path class="mk-fill" style="--d:.9s" d="M42 62 228 42l20 150-186 20Z" fill="url(#mk-stripes)"/>
+        <path class="mk-draw" style="--len:760;--d:.1s" d="M42 62 228 42l20 150-186 20Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
+        <path class="mk-fill" style="--d:1.1s" d="M272 42 518 62l-10 128-226-8Z" fill="#88A6AD" fill-opacity=".14"/>
+        <path class="mk-draw" style="--len:820;--d:.3s" d="M272 42 518 62l-10 128-226-8Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
+        <text x="62" y="86" class="mk-fill" style="--d:1.2s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">FIELD 1 · 6 HORSES</text>
+        <text x="292" y="66" class="mk-fill" style="--d:1.3s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">FIELD 2 · RESTING</text>
+
+        {# Arena #}
+        <rect class="mk-draw" style="--len:600;--d:.5s" x="330" y="232" width="180" height="108" rx="14" stroke="#E6E1D1" stroke-opacity=".8" stroke-width="2"/>
+        <text x="350" y="256" class="mk-fill" style="--d:1.4s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">ARENA</text>
+
+        {# Barn A, x-rayed: stalls with a horse in each #}
+        <g class="mk-fill" style="--d:1s">
+            <rect x="48" y="246" width="246" height="96" rx="8" fill="#fff" fill-opacity=".07"/>
+            <rect x="130" y="250" width="40" height="88" rx="4" fill="#A0522D" fill-opacity=".55"/>
+        </g>
+        <rect class="mk-draw" style="--len:700;--d:.6s" x="48" y="246" width="246" height="96" rx="8" stroke="#fff" stroke-opacity=".9" stroke-width="2"/>
+        <path class="mk-draw" style="--len:500;--d:1s" d="M89 246v96M130 246v96M171 246v96M212 246v96M253 246v96" stroke="#fff" stroke-opacity=".35"/>
+        <g class="mk-fill" style="--d:1.6s" fill="#fff" font-size="9.5" font-family="Source Sans 3, sans-serif" text-anchor="middle">
+            <text x="68" y="300" fill-opacity=".85">Bramble</text><text x="109" y="300" fill-opacity=".85">Duke</text>
+            <text x="150" y="300">Pip</text><text x="191" y="300" fill-opacity=".85">Maple</text>
+            <text x="232" y="300" fill-opacity=".85">Otis</text><text x="273" y="300" fill-opacity=".85">Rosa</text>
+        </g>
+        <text x="48" y="364" class="mk-fill" style="--d:1.5s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">BARN A · 6 STALLS</text>
+
+        {# Office: where the data goes #}
+        <rect class="mk-draw" style="--len:300;--d:.8s" x="176" y="384" width="92" height="50" rx="10" stroke="#fff" stroke-width="2"/>
+        <text x="222" y="414" class="mk-fill" style="--d:1.6s" fill="#fff" font-size="12" font-weight="600" text-anchor="middle" font-family="DM Sans, sans-serif">Office</text>
+
+        {# Data lines into the office, with dots moving along them #}
+        <g stroke="#E6E1D1" stroke-opacity=".55" stroke-width="1.5" class="mk-fill" style="--d:1.8s">
+            <path id="mk-p1" class="mk-flow" d="M150 205v41"/>
+            <path id="mk-p2" class="mk-flow" d="M171 342c0 22 20 30 26 42"/>
+            <path id="mk-p3" class="mk-flow" d="M395 182c-10 80-80 150-128 214"/>
+            <path id="mk-p4" class="mk-flow" d="M420 340c-20 50-90 70-152 72"/>
+        </g>
+        <g class="mk-moving" fill="#fff">
+            <circle r="3.5"><animateMotion dur="2.4s" repeatCount="indefinite" begin="2s"><mpath href="#mk-p1"/></animateMotion></circle>
+            <circle r="3.5"><animateMotion dur="2.2s" repeatCount="indefinite" begin="2.4s"><mpath href="#mk-p2"/></animateMotion></circle>
+            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="3.4s" repeatCount="indefinite" begin="2.2s"><mpath href="#mk-p3"/></animateMotion></circle>
+            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="3s" repeatCount="indefinite" begin="2.8s"><mpath href="#mk-p4"/></animateMotion></circle>
+        </g>
+
+        {# Live pins #}
+        <g>
+            <circle class="mk-pulse" style="--d:2s" cx="150" cy="268" r="8" fill="#A0522D"/>
+            <circle class="mk-fill" style="--d:1.8s" cx="150" cy="268" r="5" fill="#fff" stroke="#A0522D" stroke-width="3"/>
+            <circle class="mk-pulse" style="--d:2.6s" cx="140" cy="130" r="8" fill="#3F7A4F"/>
+            <circle class="mk-fill" style="--d:1.9s" cx="140" cy="130" r="5" fill="#fff" stroke="#3F7A4F" stroke-width="3"/>
+            <circle class="mk-pulse" style="--d:3.2s" cx="222" cy="384" r="8" fill="#fff"/>
+        </g>
+    </svg>
+
+    {# Floating cards #}
+    <div class="mk-card absolute left-[-2%] top-[30%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.2s">
+        <span class="h-2 w-2 rounded-full bg-meadow"></span><span><strong class="font-semibold">Bramble</strong> moved to Field 1</span>
+    </div>
+    <div class="mk-card absolute right-[-3%] top-[44%] rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.8s">
+        <span class="flex items-center gap-2"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-meadow text-white">{% include "marketing/_icon.html" with name="check" cls="h-3 w-3" %}</span><strong class="font-semibold">Invoice sent to Xero</strong></span>
+        <span class="mt-0.5 block pl-6 text-sage">INV-1042 · &pound;1,240.00</span>
+    </div>
+    <div class="mk-card absolute bottom-[3%] right-[4%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:3.4s">
+        <span class="h-2 w-2 rounded-full bg-saddle"></span><span><strong class="font-semibold">Farrier due</strong> · Pip, Barn A</span>
+    </div>
+</div>

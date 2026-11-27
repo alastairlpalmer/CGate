@@ -3,57 +3,77 @@
 {% block og_title %}Pricing - Cgate{% endblock %}
 {% block description %}Cgate pricing: a price per horse, per month. Choose the plan with the modules your yard needs.{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with title="Pay for the horses you have" intro="One price per horse, per month. Choose the plan with the modules your yard needs." %}
+{% include "marketing/_page_intro.html" with eyebrow="Pricing" title="Pay for the horses you have" intro="One price per horse, per month. Choose the plan with the modules your yard needs." %}
 
 <section class="bg-white" aria-label="Plans">
-    <div class="mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-3 lg:px-8 lg:py-20">
+    <div class="mx-auto max-w-7xl px-4 pt-16 sm:px-6 lg:px-8 lg:pt-20">
+        {# Horse-count slider (js/marketing.js). Without the script the totals show 20 horses. #}
+        <div class="mk-reveal mx-auto max-w-2xl rounded-2xl border border-sand bg-parchment/60 p-6 sm:p-8">
+            <label for="horse-slider" class="flex items-baseline justify-between gap-4">
+                <span class="font-heading text-lg font-semibold text-charcoal">How many horses are at your yard?</span>
+                <span class="font-heading text-3xl text-forest"><span data-horse-count>{{ example_horses }}</span></span>
+            </label>
+            <input id="horse-slider" type="range" min="1" max="{{ large_yard }}" value="{{ example_horses }}" step="1" data-horse-slider class="mk-range mt-5 w-full">
+            <div class="mt-2 flex justify-between text-xs text-sage"><span>1</span><span>{{ large_yard }}+</span></div>
+        </div>
+    </div>
+    <div class="mx-auto grid max-w-7xl items-start gap-6 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:px-8">
         {% for plan in plans %}
-        <article class="flex flex-col rounded-2xl border {% if plan.popular %}border-forest ring-2 ring-forest{% else %}border-sand{% endif %} bg-white p-8" aria-labelledby="plan-{{ plan.key }}">
-            <div class="flex items-center justify-between gap-3">
-                <h2 id="plan-{{ plan.key }}" class="font-heading text-2xl font-semibold text-forest">{{ plan.name }}</h2>
-                {% if plan.popular %}<span class="rounded-full bg-forest px-3 py-1 text-xs font-semibold text-white">Recommended</span>{% endif %}
-            </div>
+        <article class="mk-reveal relative flex flex-col rounded-3xl border bg-white p-8 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-forest/10 {% if plan.popular %}border-forest shadow-xl shadow-forest/10 lg:-mt-4 lg:pb-12{% else %}border-sand{% endif %}" style="--d:{{ forloop.counter0 }}00ms" aria-labelledby="plan-{{ plan.key }}">
+            {% if plan.popular %}<span class="absolute -top-3 left-8 rounded-full bg-forest px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white">Recommended</span>{% endif %}
+            <h2 id="plan-{{ plan.key }}" class="font-heading text-2xl font-semibold text-forest">{{ plan.name }}</h2>
             <p class="mt-2 text-sage">{{ plan.for }}</p>
-            <p class="mt-6 flex items-baseline gap-2">
-                <span class="font-heading text-5xl font-normal tracking-tight text-charcoal">{{ plan.price_label }}</span>
+            <p class="mt-8 flex items-baseline gap-2">
+                <span class="font-heading text-5xl font-normal tracking-[-0.02em] text-charcoal">{{ plan.price_label }}</span>
                 <span class="text-sage">per horse, per month</span>
             </p>
-            <p class="mt-1 text-sm text-sage">A {{ example_horses }}-horse yard pays {{ plan.example }} a month.</p>
-            <a href="{% url 'marketing:contact' %}?topic=demo" class="mt-6 inline-flex h-12 items-center justify-center rounded-full {% if plan.popular %}bg-saddle text-white hover:bg-saddle-dark{% else %}border border-forest text-forest hover:bg-parchment{% endif %} px-6 font-semibold">Book a demo</a>
-            {% if plan.includes %}<p class="mt-8 font-semibold text-charcoal">{{ plan.includes }}</p>{% else %}<p class="mt-8 font-semibold text-charcoal">Includes:</p>{% endif %}
+            <p class="mt-3 rounded-lg bg-parchment px-3 py-2 text-sm text-charcoal">
+                <span data-horse-count>{{ example_horses }}</span> horses: <strong class="font-semibold" data-per-horse="{{ plan.price }}">{{ plan.example }}</strong> a month
+            </p>
+            <a href="{% url 'marketing:contact' %}?topic=demo" class="mt-8 inline-flex h-12 items-center justify-center rounded-full px-6 font-semibold transition {% if plan.popular %}bg-saddle text-white hover:bg-saddle-dark{% else %}border border-forest text-forest hover:bg-forest hover:text-white{% endif %}">Book a demo</a>
+            <p class="mt-8 text-sm font-semibold uppercase tracking-wider text-sage">{% if plan.includes %}{{ plan.includes }}{% else %}Includes{% endif %}</p>
             <ul class="mt-4 space-y-3">
                 {% for feature in plan.feature_list %}
                 <li class="flex gap-3">
-                    <svg class="mt-1 h-5 w-5 shrink-0 text-meadow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
-                    <span><a href="{% url 'marketing:features' %}#{{ feature.key }}" class="font-medium text-forest hover:underline">{{ feature.title }}</a></span>
+                    <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-meadow/15 text-meadow">{% include "marketing/_icon.html" with name="check" cls="h-3.5 w-3.5" %}</span>
+                    <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="font-medium text-charcoal hover:text-forest hover:underline">{{ feature.title }}</a>
                 </li>
                 {% endfor %}
             </ul>
         </article>
         {% endfor %}
     </div>
-    <div class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-        <div class="flex flex-col gap-4 rounded-2xl bg-parchment p-8 md:flex-row md:items-center md:justify-between">
+    <div class="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+        <div class="mk-reveal flex flex-col gap-4 rounded-3xl border border-sand bg-parchment p-8 md:flex-row md:items-center md:justify-between" data-large-yard-box>
             <div>
                 <h2 class="font-heading text-2xl font-normal text-forest">More than {{ large_yard }} horses, or more than one yard?</h2>
                 <p class="mt-1 text-sage">Talk to us. We make a price to suit your yards.</p>
+                <p class="mt-2 text-sm font-semibold text-saddle" data-large-yard hidden>Your yard is over {{ large_yard }} horses: ask us for a price.</p>
             </div>
-            <a href="{% url 'marketing:contact' %}?topic=pricing" class="inline-flex h-12 shrink-0 items-center justify-center rounded-full border border-forest px-6 font-semibold text-forest hover:bg-white">Ask about pricing</a>
+            <a href="{% url 'marketing:contact' %}?topic=pricing" class="inline-flex h-12 shrink-0 items-center justify-center rounded-full border border-forest px-6 font-semibold text-forest transition hover:bg-forest hover:text-white">Ask about pricing</a>
         </div>
     </div>
 </section>
 
 <section class="bg-white" aria-labelledby="faq-title">
-    <div class="mx-auto grid max-w-7xl gap-10 px-4 pb-20 sm:px-6 lg:grid-cols-3 lg:px-8">
-        <h2 id="faq-title" class="font-heading text-3xl font-normal tracking-tight text-forest">Questions</h2>
-        <dl class="border-t border-sand lg:col-span-2">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 pb-8 sm:px-6 lg:grid-cols-3 lg:px-8">
+        <div class="mk-reveal">
+            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">FAQ</p>
+            <h2 id="faq-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">Questions</h2>
+        </div>
+        <div class="border-t border-sand lg:col-span-2">
             {% for question, answer in faq %}
-            <div class="border-b border-sand py-6">
-                <dt class="font-heading text-lg font-semibold text-charcoal">{{ question }}</dt>
-                <dd class="mt-2 text-sage">{{ answer }}</dd>
-            </div>
+            <details class="mk-faq mk-reveal group border-b border-sand" style="--d:{{ forloop.counter0 }}00ms">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-6 font-heading text-lg font-semibold text-charcoal hover:text-forest">
+                    {{ question }}
+                    <span class="mk-chevron text-sage transition-transform duration-300">{% include "marketing/_icon.html" with name="chevron" cls="h-5 w-5" %}</span>
+                </summary>
+                <p class="-mt-2 pb-6 pr-10 leading-relaxed text-sage">{{ answer }}</p>
+            </details>
             {% endfor %}
-        </dl>
+        </div>
     </div>
 </section>
+
+{% include "marketing/_cta.html" %}
 {% endblock %}

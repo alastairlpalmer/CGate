@@ -3,18 +3,19 @@
 {% block og_title %}Contact - Cgate{% endblock %}
 {% block description %}Book a demo of Cgate, or ask a question about the app or its pricing.{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with title="Get in touch" intro="Book a demo, or ask us a question. We show you Cgate with your own horses and owners." %}
+{% include "marketing/_page_intro.html" with eyebrow="Contact" title="Get in touch" intro="Book a demo, or ask us a question. We show you Cgate with your own horses and owners." %}
 
 <section class="bg-white" aria-label="Contact form">
-    <div class="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-20">
+    <div class="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.5fr_1fr] lg:gap-16 lg:px-8 lg:py-24">
+    <div class="mk-reveal rounded-3xl border border-sand bg-white p-6 shadow-xl shadow-forest/5 sm:p-10">
         {% if sent %}
-        <div class="rounded-2xl border border-meadow bg-parchment p-8" role="status">
-            <h2 class="font-heading text-2xl font-semibold text-forest">Thank you, we have your message</h2>
+        <div class="rounded-2xl bg-parchment p-8" role="status"><span class="flex h-12 w-12 items-center justify-center rounded-full bg-meadow text-white">{% include "marketing/_icon.html" with name="check" %}</span>
+            <h2 class="mt-6 font-heading text-2xl font-semibold text-forest">Thank you, we have your message</h2>
             <p class="mt-2 text-lg text-sage">We reply by email.</p>
             <a href="/" class="mt-6 inline-flex font-semibold text-forest hover:underline">Back to the home page</a>
         </div>
         {% else %}
-        <form method="post" novalidate class="space-y-6">
+        <form method="post" novalidate class="space-y-6 accent-forest">
             {% csrf_token %}
             {% if form.non_field_errors %}
             <div class="rounded-lg border border-error-red bg-white p-4 text-error-red" role="alert">{{ form.non_field_errors|join:" " }}</div>
@@ -52,9 +53,26 @@
                 {% if form.consent.errors %}<p class="mt-2 text-sm text-error-red" id="{{ form.consent.id_for_label }}-error">{{ form.consent.errors|join:" " }}</p>{% endif %}
             </div>
 
-            <button type="submit" class="inline-flex h-12 items-center rounded-full bg-saddle px-8 font-semibold text-white hover:bg-saddle-dark">Send message</button>
+            <button type="submit" class="group inline-flex h-12 items-center gap-2 rounded-full bg-saddle px-8 font-semibold text-white shadow-lg shadow-saddle/20 transition hover:bg-saddle-dark">Send message {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}</button>
         </form>
         {% endif %}
+    </div>
+    <aside class="mk-reveal lg:pt-4" style="--d:150ms" aria-labelledby="next-title">
+        <h2 id="next-title" class="font-heading text-2xl font-semibold text-forest">What happens next</h2>
+        <ol class="mt-8 space-y-8">
+            {% for title, text in next_steps %}
+            <li class="flex gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-parchment font-heading font-semibold text-forest">{{ forloop.counter }}</span>
+                <div><h3 class="font-heading text-lg font-semibold text-charcoal">{{ title }}</h3><p class="mt-1 leading-relaxed text-sage">{{ text }}</p></div>
+            </li>
+            {% endfor %}
+        </ol>
+        <div class="mt-10 rounded-2xl bg-forest p-6 text-white">
+            <p class="font-heading text-lg font-semibold">Already use Cgate?</p>
+            <p class="mt-1 text-white/80">Sign in to your yard.</p>
+            <a href="{% url 'login' %}" class="mt-4 inline-flex h-10 items-center rounded-full border border-white/60 px-5 text-sm font-semibold transition hover:bg-white hover:text-forest">Sign in</a>
+        </div>
+    </aside>
     </div>
 </section>
 {% endblock %}

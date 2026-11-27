@@ -122,19 +122,19 @@ HOME_FEATURES = [_BY_KEY[key] for key in ('horses', 'health', 'invoicing', 'xero
 PLANS = [
     {
         'key': 'essentials', 'name': 'Essentials', 'price': Decimal('5'),
-        'for': 'Run the yard day to day.',
+        'for': 'Run the yard day to day',
         'features': ['horses', 'locations', 'health', 'phone', 'security'],
     },
     {
         'key': 'professional', 'name': 'Professional', 'price': Decimal('7.50'),
-        'for': 'Run the yard and its money.',
+        'for': 'Run the yard and its money',
         'features': ['invoicing', 'xero', 'farrier', 'feed'],
         'includes': 'Everything in Essentials, plus:',
         'popular': True,
     },
     {
         'key': 'complete', 'name': 'Complete', 'price': Decimal('10'),
-        'for': 'For competition yards and studs.',
+        'for': 'For competition yards and studs',
         'features': ['training', 'breeding', 'cvet'],
         'includes': 'Everything in Professional, plus:',
     },
@@ -169,4 +169,38 @@ PRICING_FAQ = [
      'Yes. You can export your horses and owners at any time.'),
     ('Do you help us set up?',
      'Yes. We help you bring in your horses and owners, and show your staff how it works.'),
+]
+
+# Home page lists.
+YARD_LINKS = [
+    ('horses', 'Horses and owners'),
+    ('invoicing', 'Invoicing and Xero'),
+    ('health', 'Health records'),
+    ('cvet', 'Vets and farriers'),
+]
+
+STEPS = [
+    ('Set up your yard', 'Add your horses, owners, stables and livery rates.'),
+    ('Record the day', 'Moves, health jobs, visits and extras, on a phone in the yard.'),
+    ('Send the invoices', 'Made each month from what you recorded, and sent to owners and to Xero.'),
+]
+
+AUDIENCES = [
+    ('manager', 'Yard managers', 'The whole yard on one screen: horses, stables, money and what is due.'),
+    ('staff', 'Staff', 'Their own login, with only the parts they need.'),
+    ('owners', 'Owners', 'Clear invoices, and reminders before health dates are due.'),
+    ('cvet', 'Vets and farriers', 'Their own phone page to record visits at the stable door.'),
+]
+
+BELIEFS = [
+    ('invoicing', 'Record it once', 'A stay, a visit or a charge goes in once. The invoices, the reminders and the records follow from it.'),
+    ('phone', 'Simple on a phone', 'The work happens in the yard, not at a desk. Cgate is made for one hand and a busy day.'),
+    ('owners', 'Everyone connected', 'Yard, owners, vets and farriers see the same facts about each horse.'),
+    ('security', 'Your data is yours', 'Safe, backed up every day, and yours to take with you.'),
+]
+
+CONTACT_STEPS = [
+    ('We read your message', 'A person reads every message. No automatic sales emails.'),
+    ('We reply by email', 'We answer your question, or find a time for a demo.'),
+    ('You see Cgate on your yard', 'We show you the app with your own horses and owners.'),
 ]

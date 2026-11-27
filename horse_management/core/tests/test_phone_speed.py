@@ -124,6 +124,7 @@ class SizeBudgetTests(SimpleTestCase):
 
     STYLES_LIMIT = 45_000   # styles.css is 39 KB today
     SCRIPTS_LIMIT = 120_000  # the scripts in <head> are 107 KB today
+    MARKETING_STYLES_LIMIT = 20_000  # marketing.css is about 8 KB today
 
     base = Path(settings.BASE_DIR)
 
@@ -137,6 +138,12 @@ class SizeBudgetTests(SimpleTestCase):
     def bundle_list(self):
         lines = (self.base / 'static' / 'js' / 'bundle.txt').read_text().splitlines()
         return [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
+
+    def test_the_marketing_stylesheet_is_under_its_limit(self):
+        # The public pages (templates/marketing) have their own stylesheet,
+        # so the app's styles.css carries none of their styles.
+        size = self.compressed('css/marketing.css')
+        self.assertLess(size, self.MARKETING_STYLES_LIMIT, f'marketing.css is {size} bytes compressed')
 
     def test_the_scripts_every_page_loads_are_under_their_limit(self):
         head = (self.base / 'templates' / 'base.html').read_text().split('</head>')[0]
