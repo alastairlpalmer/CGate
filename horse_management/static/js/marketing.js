@@ -200,35 +200,26 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hide(); } });
 })();
 
-// "See it working" (marketing/_showcase.html): tabs, pick a horse, pick a
-// paddock on the map, and the invoice steps that light up in turn.
+// "See it working" (marketing/_showcase.html): tabs light the matching
+// side-bar item; [data-go] links switch the view inside a tab (a list to
+// a horse or an invoice, map to cards); the map picks a paddock.
 (function () {
     'use strict';
     var box = document.querySelector('[data-showcase]');
     if (!box) { return; }
-    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var tabs = box.querySelectorAll('[data-tab]');
-    var timers = [];
+    var navs = box.querySelectorAll('[data-nav]');
 
-    function playSteps() {
-        var steps = box.querySelectorAll('[data-step]');
-        timers.forEach(clearTimeout);
-        timers = [];
-        for (var i = 0; i < steps.length; i++) { steps[i].classList.toggle('is-done', still); }
-        if (still) { return; }
-        Array.prototype.forEach.call(steps, function (step, index) {
-            timers.push(setTimeout(function () { step.classList.add('is-done'); }, 500 + index * 900));
-        });
-    }
     function select(tab, focus) {
+        var key = tab.getAttribute('data-tab');
         for (var i = 0; i < tabs.length; i++) {
             var on = tabs[i] === tab;
             tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
             tabs[i].tabIndex = on ? 0 : -1;
             box.querySelector('[data-panel="' + tabs[i].getAttribute('data-tab') + '"]').hidden = !on;
         }
+        for (var n = 0; n < navs.length; n++) { navs[n].classList.toggle('is-on', navs[n].getAttribute('data-nav') === key); }
         if (focus) { tab.focus(); }
-        if (tab.getAttribute('data-tab') === 'invoicing') { playSteps(); }
     }
     for (var t = 0; t < tabs.length; t++) {
         tabs[t].addEventListener('click', function () { select(this); });
@@ -239,29 +230,34 @@
             if (e.key === 'ArrowLeft') { select(list[(at - 1 + list.length) % list.length], true); e.preventDefault(); }
         });
     }
-    var replay = box.querySelector('[data-replay]');
-    if (replay) { replay.addEventListener('click', playSteps); }
 
-    // One of a group is chosen: a horse (shows its record) or a paddock (its details).
-    function chooser(pickAttr, showAttr) {
-        var picks = box.querySelectorAll('[' + pickAttr + ']');
-        function choose(key) {
-            for (var i = 0; i < picks.length; i++) {
-                picks[i].setAttribute('aria-pressed', picks[i].getAttribute(pickAttr) === key ? 'true' : 'false');
-            }
-            var shows = box.querySelectorAll('[' + showAttr + ']');
-            for (var j = 0; j < shows.length; j++) { shows[j].hidden = shows[j].getAttribute(showAttr) !== key; }
+    box.addEventListener('click', function (e) {
+        var link = e.target.closest('[data-go]');
+        if (!link) { return; }
+        var panel = link.closest('[data-panel]');
+        var target = link.getAttribute('data-go');
+        var views = panel.querySelectorAll('[data-view]');
+        for (var v = 0; v < views.length; v++) { views[v].hidden = views[v].getAttribute('data-view') !== target; }
+        var group = link.closest('[role="group"]');
+        if (group) {
+            var peers = group.querySelectorAll('[data-go]');
+            for (var p = 0; p < peers.length; p++) { peers[p].setAttribute('aria-pressed', peers[p] === link ? 'true' : 'false'); }
         }
-        for (var p = 0; p < picks.length; p++) {
-            picks[p].addEventListener('click', function () { choose(this.getAttribute(pickAttr)); });
-            picks[p].addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') { choose(this.getAttribute(pickAttr)); e.preventDefault(); }
-            });
-            if (pickAttr === 'data-pick-field') {
-                picks[p].addEventListener('mouseenter', function () { choose(this.getAttribute(pickAttr)); });
-            }
-        }
+        var heading = panel.querySelector('[data-view="' + target + '"] button[data-go]');
+        if (heading && target !== 'list' && target !== 'map' && target !== 'cards') { heading.focus(); }
+    });
+
+    var fields = box.querySelectorAll('[data-pick-field]');
+    function pick(key) {
+        for (var i = 0; i < fields.length; i++) { fields[i].setAttribute('aria-pressed', fields[i].getAttribute('data-pick-field') === key ? 'true' : 'false'); }
+        var infos = box.querySelectorAll('[data-field-info]');
+        for (var j = 0; j < infos.length; j++) { infos[j].hidden = infos[j].getAttribute('data-field-info') !== key; }
     }
-    chooser('data-pick-horse', 'data-record');
-    chooser('data-pick-field', 'data-field-info');
+    for (var f = 0; f < fields.length; f++) {
+        fields[f].addEventListener('click', function () { pick(this.getAttribute('data-pick-field')); });
+        fields[f].addEventListener('mouseenter', function () { pick(this.getAttribute('data-pick-field')); });
+        fields[f].addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { pick(this.getAttribute('data-pick-field')); e.preventDefault(); }
+        });
+    }
 })();

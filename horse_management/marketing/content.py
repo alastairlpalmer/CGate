@@ -261,18 +261,73 @@ SHOWCASE_FIELDS = [
      'usage': 'Rested', 'area': '2.3', 'capacity': 6, 'horses': [], 'note': 'Resting since 1 October',
      'dots': []},
 ]
-SHOWCASE_INVOICE = {
-    'number': 'INV-1042', 'owner': 'Sarah Jones', 'horse': 'Pip', 'period': '1 to 30 November',
-    'lines': [('Full livery, 30 days', '£600.00'), ('Farrier: shod all round (12 Nov)', '£95.00'),
-              ('Wormer (3 Nov)', '£12.50')],
-    'total': '£707.50',
-    'steps': [('Made from the month\'s records', 'Stays, extras and visits'),
-              ('Emailed to Sarah', 'With the PDF'), ('Sent to Xero', 'No typing it twice'),
-              ('Paid, and matched', 'The payment comes back from Xero')],
-}
+for _field in SHOWCASE_FIELDS:
+    # The capacity ring (marketing/_location_card.html): 88 is its length.
+    _field['dash'] = round(88 * len(_field['horses']) / _field['capacity'], 1) if _field['capacity'] else 0
+
 SHOWCASE_TABS = [
     ('dashboard', 'Dashboard', 'manager'),
-    ('horses', 'Horse records', 'horses'),
-    ('maps', 'Maps', 'locations'),
-    ('invoicing', 'Invoicing', 'invoicing'),
+    ('horses', 'Horses', 'horses'),
+    ('maps', 'Locations', 'locations'),
+    ('invoicing', 'Invoices', 'invoicing'),
+]
+# The app's side bar (templates/base.html), and which item each tab lights.
+SHOWCASE_NAV = [
+    ('Overview', [('dashboard', 'Dashboard', 'calendar')]),
+    ('Manage', [('horses', 'Horses', 'horse'), ('maps', 'Locations', 'fence'), ('health', 'Health', 'stethoscope'),
+                ('farrier', 'Farrier', 'horseshoe'), ('breeding', 'Breeding', 'foal'), ('feed', 'Feed', 'hay')]),
+    ('Finance', [('owners', 'Owners', 'pound'), ('invoicing', 'Finances', 'document')]),
+]
+SHOWCASE_STATS = [
+    ('Horses', '22', '18 owners'), ('Capacity', '22/32', '1 resting'),
+    ('Notifications', '3', 'Need action'), ('Outstanding', '£774.00', '3 invoices'),
+]
+SHOWCASE_WEEK = [
+    ('Today', 'Mon 23 Nov', [('Pip', 'Vaccination · Flu and tetanus · Barn A', 'Record vaccination', False)]),
+    ('Tomorrow', 'Tue 24 Nov', [('Farrier', '3 horses · Barn A', 'Record for 3', True)]),
+    ('Friday', 'Fri 27 Nov', [('Vaccination · Flu and tetanus', '2 horses · Top Field', 'Record for 2', True)]),
+]
+SHOWCASE_TIMELINE = [
+    ('Mon 23 Nov', [([('Bramble', '#9A4A22'), ('Maple', '#B98A4E')], 'Moved to Top Field'),
+                    ([('Otis', '#2A2622')], 'Arrived at Long Meadow')]),
+    ('Sat 21 Nov', [([('Duke', '#8C8F94')], 'Dentist · routine'),
+                    ([('Pip', '#6B3A1F')], 'Farrier · shod all round')]),
+]
+
+# Extra detail for the app-style demo (marketing/_showcase.html).
+_HORSE_DETAIL = {
+    'bramble': {'age': '12yo', 'colour': 'Chestnut', 'sex': 'Gelding', 'rate': 'Grass livery · £6.00/day',
+                'arrived': '3 Mar 2025', 'stay': '1 year 8 months on site', 'location': 'Top Field', 'light': False},
+    'duke': {'age': '15yo', 'colour': 'Grey', 'sex': 'Gelding', 'rate': 'Full livery · £20.00/day',
+             'arrived': '12 Jan 2024', 'stay': '2 years 10 months on site', 'location': 'Barn A', 'light': True},
+    'pip': {'age': '9yo', 'colour': 'Bay', 'sex': 'Mare', 'rate': 'Full livery · £20.00/day',
+            'arrived': '11 May 2026', 'stay': '6 months on site', 'location': 'Barn A', 'light': False},
+    'maple': {'age': '6yo', 'colour': 'Dun', 'sex': 'Mare', 'rate': 'Grass livery · £6.00/day',
+              'arrived': '2 Sep 2026', 'stay': '2 months on site', 'location': 'Top Field', 'light': True},
+    'otis': {'age': '7yo', 'colour': 'Black', 'sex': 'Gelding', 'rate': 'Grass livery · £6.00/day',
+             'arrived': '1 Nov 2026', 'stay': '3 weeks on site', 'location': 'Long Meadow', 'light': False},
+}
+for _horse in HERO_HORSES:
+    _horse.update(_HORSE_DETAIL[_horse['key']])
+    _horse['owner_line'] = ', '.join(name for name, _share in _horse['shares'])
+
+# Invoices for the Invoicing demo, as the app lists and shows them.
+SHOWCASE_INVOICES = [
+    {'key': 'inv6', 'number': 'INV00216', 'owner': 'Sarah Jones', 'email': 'sarah@example.com', 'total': '£707.50',
+     'status': 'Paid', 'xero': True, 'paid': '£707.50', 'due': '£0.00',
+     'lines': [('Pip', '', 'Full livery £20.00 per day - 30 days (1 Nov to 30 Nov 2026)', '£600.00'),
+               ('Pip', '', 'Farrier: shod all round (12 Nov)', '£95.00'),
+               ('Pip', '', 'Wormer (3 Nov)', '£12.50')]},
+    {'key': 'inv5', 'number': 'INV00215', 'owner': 'Amy Cole', 'email': 'amy@example.com', 'total': '£300.00',
+     'status': 'Sent', 'xero': True, 'paid': '£0.00', 'due': '£300.00',
+     'lines': [('Duke', '50.00% share', 'Full livery £20.00 per day - 30 days (1 Nov to 30 Nov 2026) (50.00% share)', '£300.00')]},
+    {'key': 'inv4', 'number': 'INV00214', 'owner': 'Ben Cole', 'email': 'ben@example.com', 'total': '£300.00',
+     'status': 'Sent', 'xero': True, 'paid': '£0.00', 'due': '£300.00',
+     'lines': [('Duke', '50.00% share', 'Full livery £20.00 per day - 30 days (1 Nov to 30 Nov 2026) (50.00% share)', '£300.00')]},
+    {'key': 'inv3', 'number': 'INV00213', 'owner': 'Tom Hart', 'email': 'tom@example.com', 'total': '£180.00',
+     'status': 'Paid', 'xero': True, 'paid': '£180.00', 'due': '£0.00',
+     'lines': [('Bramble', '', 'Grass livery £6.00 per day - 30 days (1 Nov to 30 Nov 2026)', '£180.00')]},
+    {'key': 'inv2', 'number': 'INV00212', 'owner': 'Claire Moss', 'email': 'claire@example.com', 'total': '£174.00',
+     'status': 'Draft', 'xero': False, 'paid': '£0.00', 'due': '£174.00',
+     'lines': [('Otis', '', 'Grass livery £6.00 per day - 29 days (2 Nov to 30 Nov 2026)', '£174.00')]},
 ]

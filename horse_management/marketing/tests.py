@@ -59,15 +59,18 @@ class SiteOnTests(TestCase):
         self.assertIn('id="horse-pip"', html)
         self.assertIn('Dun Harley', html)
 
-    def test_home_shows_the_features_working(self):
+    def test_home_shows_the_app_working(self):
         html = self.client.get('/').content.decode()
         for tab in ('dashboard', 'horses', 'maps', 'invoicing'):
             self.assertIn(f'id="panel-{tab}"', html)
-        self.assertIn('data-pick-horse="duke"', html)
-        self.assertIn('Each owner is invoiced their share.', html)   # Duke is co-owned
+        self.assertIn('data-go="horse-duke"', html)
+        self.assertIn('data-view="horse-duke"', html)
+        self.assertIn('Co-owned: each owner is invoiced their share.', html)   # Duke
         self.assertIn('data-pick-field="winter"', html)
         self.assertIn('Resting since 1 October', html)
+        self.assertIn('(50.00% share)', html)                                # an invoice line, as in the app
         self.assertIn('£707.50', html)
+        self.assertIn('id="i-horse"', html)                                  # the app's own icons
 
     def test_each_page_opens_for_a_visitor(self):
         for name in PAGES:

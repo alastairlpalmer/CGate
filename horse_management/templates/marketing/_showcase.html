@@ -1,15 +1,19 @@
 {% comment %}
-"See it working" (Home): four parts of the app, drawn in HTML and SVG with
-example data, in one window with tabs. Dashboard, Horse records (pick a
-horse), Maps (point at or tap a paddock) and Invoicing (the steps light up).
-js/marketing.js runs the tabs and the picks; without it the first tab shows.
+"See it working" (Home): the app's own pages, copied closely in HTML with
+example data (invented names) and simplified. The same dark side bar,
+cards, tables and timeline as the app (compare templates/base.html,
+horses/horse_detail.html, locations, invoicing/invoice_detail.html).
+Tabs: Dashboard, Horses (list, then a horse's page), Locations (map or
+cards), Invoices (list, then an invoice). js/marketing.js runs the tabs and
+the "go to" links; without it the Dashboard shows.
 {% endcomment %}
+{% include "includes/_icons.html" %}
 <section id="see-it-working" class="scroll-mt-16 overflow-hidden bg-parchment" aria-labelledby="showcase-title" data-showcase>
     <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div class="mk-reveal mx-auto max-w-2xl text-center">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">See it working</p>
-            <h2 id="showcase-title" class="mt-2 font-heading text-3xl font-normal leading-[1.1] tracking-[-0.02em] text-forest sm:text-4xl">Your yard, on one screen</h2>
-            <p class="mt-3 text-lg text-sage">Try it: pick a horse, point at a paddock, watch an invoice go out. Example data.</p>
+            <h2 id="showcase-title" class="mt-2 font-heading text-3xl font-normal leading-[1.1] tracking-[-0.02em] text-forest sm:text-4xl">The app, as your team will use it</h2>
+            <p class="mt-3 text-lg text-sage">Click around: open a horse, switch to the map, open an invoice. Example data.</p>
         </div>
 
         <div class="mk-reveal mt-8 flex justify-center" style="--d:100ms">
@@ -23,149 +27,221 @@ js/marketing.js runs the tabs and the picks; without it the first tab shows.
             </div>
         </div>
 
-        <div class="mk-reveal relative mx-auto mt-6 max-w-5xl" style="--d:200ms">
+        <div class="mk-reveal relative mx-auto mt-6 max-w-6xl" style="--d:200ms">
             <div class="absolute -inset-x-6 -bottom-6 top-10 rounded-[2rem] bg-forest/10 blur-2xl" aria-hidden="true"></div>
-            <div class="relative overflow-hidden rounded-2xl border border-sand bg-white shadow-2xl shadow-forest/15">
-                <div class="flex items-center gap-2 border-b border-sand bg-parchment/60 px-4 py-3" aria-hidden="true">
-                    <span class="h-3 w-3 rounded-full bg-sand"></span><span class="h-3 w-3 rounded-full bg-sand"></span><span class="h-3 w-3 rounded-full bg-sand"></span>
-                    <span class="ml-4 hidden rounded-md bg-white px-3 py-1 text-xs text-sage sm:block">Cgate · Example yard</span>
+            <div class="relative overflow-hidden rounded-2xl border border-sand bg-white text-[13px] text-charcoal shadow-2xl shadow-forest/15">
+                <div class="flex items-center gap-2 border-b border-sand bg-white px-4 py-2.5" aria-hidden="true">
+                    <span class="h-2.5 w-2.5 rounded-full bg-sand"></span><span class="h-2.5 w-2.5 rounded-full bg-sand"></span><span class="h-2.5 w-2.5 rounded-full bg-sand"></span>
+                    <span class="ml-3 hidden rounded-md bg-parchment px-3 py-0.5 text-[11px] text-sage sm:block">Cgate · Example yard</span>
                 </div>
-
-                {# ── Dashboard ── #}
-                <div role="tabpanel" id="panel-dashboard" aria-labelledby="tab-dashboard" data-panel="dashboard">
-                    <div aria-hidden="true">{% include "marketing/_dashboard_mock.html" %}</div>
-                </div>
-
-                {# ── Horse records ── #}
-                <div role="tabpanel" id="panel-horses" aria-labelledby="tab-horses" data-panel="horses" hidden>
-                    <div class="grid md:grid-cols-[190px_1fr]">
-                        <div class="flex gap-1 overflow-x-auto border-b border-sand p-3 md:block md:space-y-1 md:border-b-0 md:border-r" role="group" aria-label="Horses">
-                            {% for horse in hero_horses %}
-                            <button type="button" data-pick-horse="{{ horse.key }}" aria-pressed="{% if horse.key == 'pip' %}true{% else %}false{% endif %}"
-                                    class="flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-parchment aria-pressed:bg-forest aria-pressed:text-white md:w-full">
-                                <span class="h-7 w-7 shrink-0 rounded-md" style="background:{{ horse.coat }}"></span>
-                                <span class="min-w-0"><span class="block font-semibold">{{ horse.name }}</span><span class="hidden truncate text-xs opacity-75 md:block">{{ horse.place }}</span></span>
-                            </button>
+                <div class="grid md:grid-cols-[176px_1fr]">
+                    {# The app's side bar #}
+                    <nav class="hidden flex-col bg-forest p-3 text-white md:flex" aria-hidden="true">
+                        <div class="flex items-center gap-2 px-1 font-heading text-base font-bold"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">{% include "marketing/_logo.html" with cls="h-5 w-5" %}</span>Cgate</div>
+                        <div class="mt-3 flex gap-1.5"><div class="flex h-8 flex-1 items-center gap-2 rounded-lg bg-white/10 px-2 text-[11px] text-white/60"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</div><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-saddle text-lg leading-none">+</span></div>
+                        {% for group, items in showcase_nav %}
+                        <p class="mt-4 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">{{ group }}</p>
+                        <ul class="mt-1 space-y-0.5">
+                            {% for key, label, sprite in items %}
+                            <li data-nav="{{ key }}" class="flex items-center gap-2.5 rounded-lg border border-transparent px-2 py-1.5 text-[12.5px] text-white/85 [&.is-on]:border-white/15 [&.is-on]:bg-white/15 [&.is-on]:font-semibold [&.is-on]:text-white {% if key == 'dashboard' %}is-on{% endif %}"><svg class="h-4 w-4 opacity-80"><use href="#i-{{ sprite }}"/></svg>{{ label }}</li>
                             {% endfor %}
-                        </div>
-                        <div class="bg-parchment/40 p-4 sm:p-6">
-                            {% for horse in hero_horses %}
-                            <article data-record="{{ horse.key }}" {% if horse.key != 'pip' %}hidden{% endif %} aria-label="{{ horse.name }}'s record (example)">
-                                <div class="flex flex-wrap items-center gap-4">
-                                    <div class="flex h-16 w-16 shrink-0 items-end justify-center overflow-hidden rounded-xl" style="background:linear-gradient(160deg,{{ horse.coat }}cc,{{ horse.coat }})">
-                                        <svg viewBox="0 0 48 48" class="h-14 w-14 text-white/90" fill="currentColor" aria-hidden="true"><path d="M13 48l4-17c-2-6-1-13 4-18l2-6 3 5c6 0 11 4 14 10l5 9c1 3-1 5-4 4l-6-2-3 4v11z"/><circle cx="31" cy="17" r="1.6" fill="#2D2D2D"/></svg>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <h3 class="font-heading text-2xl font-semibold text-forest">{{ horse.name }}</h3>
-                                        <p class="text-sm text-sage">{{ horse.desc }}</p>
-                                    </div>
-                                    <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                                        <span class="rounded-full bg-meadow/10 px-2.5 py-1 text-meadow">Passport &#10003;</span>
-                                        <span class="rounded-full bg-meadow/10 px-2.5 py-1 text-meadow">Microchip &#10003;</span>
-                                    </div>
-                                </div>
-                                <dl class="mt-5 grid grid-cols-3 overflow-hidden rounded-xl border border-sand bg-white text-center text-sm">
-                                    <div class="p-3"><dt class="text-xs text-sage">Weight</dt><dd class="font-semibold">{{ horse.weight }}</dd></div>
-                                    <div class="border-x border-sand p-3"><dt class="text-xs text-sage">Where</dt><dd class="font-semibold">{{ horse.place }}</dd></div>
-                                    <div class="p-3"><dt class="text-xs text-sage">Breeding</dt><dd class="font-semibold">{{ horse.sire }} &times; {{ horse.dam }}</dd></div>
-                                </dl>
-                                <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                                    <div class="rounded-xl border border-sand bg-white p-4">
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-sage">Owners{% if horse.coowned %} · co-owned{% endif %}</p>
-                                        <ul class="mt-2 space-y-2 text-sm">
-                                            {% for name, share in horse.shares %}
-                                            <li><div class="flex justify-between"><span class="font-semibold">{{ name }}</span><span class="text-sage">{{ share }}%</span></div>
-                                                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-sand"><div class="h-full rounded-full bg-forest" style="width:{{ share }}%"></div></div></li>
-                                            {% endfor %}
-                                        </ul>
-                                        {% if horse.coowned %}<p class="mt-2 text-xs text-sage">Each owner is invoiced their share.</p>{% endif %}
-                                        <p class="mt-4 text-xs font-semibold uppercase tracking-wider text-sage">Due</p>
-                                        <p class="mt-1 inline-flex items-center gap-1.5 rounded-full bg-saddle/10 px-2.5 py-1 text-xs font-semibold text-saddle"><span class="h-1.5 w-1.5 rounded-full bg-saddle"></span>{{ horse.due }}</p>
-                                    </div>
-                                    <div class="rounded-xl border border-sand bg-white p-4">
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-sage">Timeline</p>
-                                        <ol class="mt-2 space-y-2 border-l-2 border-sand pl-3 text-sm">
-                                            {% for event, when in horse.timeline %}<li class="flex justify-between gap-3"><span>{{ event }}</span><span class="shrink-0 text-sage">{{ when }}</span></li>{% endfor %}
-                                        </ol>
-                                        <p class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-meadow/10 px-2.5 py-1 text-xs font-semibold text-meadow"><span class="h-1.5 w-1.5 rounded-full bg-meadow"></span>{{ horse.invoice }}</p>
-                                    </div>
-                                </div>
-                            </article>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
+                        </ul>
+                        {% endfor %}
+                        <div class="mt-auto flex items-center gap-2 rounded-xl bg-white/10 p-2 text-[11px]"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-sand font-semibold text-forest">Y</span><span>Yard manager</span></div>
+                    </nav>
 
-                {# ── Maps ── #}
-                <div role="tabpanel" id="panel-maps" aria-labelledby="tab-maps" data-panel="maps" hidden>
-                    <div class="grid md:grid-cols-[1fr_250px]">
-                        <div class="bg-[#E9EFE6] p-3 sm:p-4">
-                            <svg viewBox="0 0 520 330" class="h-auto w-full" font-family="DM Sans, sans-serif" role="group" aria-label="Map of the yard">
-                                <rect width="520" height="330" rx="12" fill="#DCE6D6"/>
-                                <path d="M0 312C140 300 360 318 520 306" stroke="#C9B994" stroke-width="10" fill="none" opacity=".8"/>
-                                {% for field in showcase_fields %}
-                                <g role="button" tabindex="0" data-pick-field="{{ field.key }}" aria-label="{{ field.name }}: {{ field.usage }}" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}" class="group cursor-pointer outline-none">
-                                    <path d="{{ field.path }}" class="transition" fill="{% if field.usage == 'Rested' %}#C8D3C2{% elif field.usage == 'Hay' %}#E4DCB8{% else %}#B7CCAE{% endif %}" stroke="#fff" stroke-width="3"/>
-                                    <path d="{{ field.path }}" fill="none" stroke="#3D5A63" stroke-width="3" class="opacity-0 transition group-hover:opacity-60 group-focus-visible:opacity-100 group-aria-pressed:opacity-100"/>
-                                    <text x="{{ field.lx }}" y="{{ field.ly }}" fill="#2F4850" font-size="12" font-weight="700">{{ field.name }}</text>
-                                    <text x="{{ field.lx }}" y="{{ field.ly|add:15 }}" fill="#56737A" font-size="10.5">{{ field.usage }}{% if field.horses %} · {{ field.horses|length }}{% endif %}</text>
-                                    {% for x, y in field.dots %}<circle cx="{{ x }}" cy="{{ y }}" r="6" fill="#3D5A63" stroke="#fff" stroke-width="2"/>{% endfor %}
-                                </g>
+                    {# The pages #}
+                    <div class="min-h-[520px] bg-parchment p-4 sm:p-5">
+
+                        {# Dashboard #}
+                        <div role="tabpanel" id="panel-dashboard" aria-labelledby="tab-dashboard" data-panel="dashboard">
+                            <p class="font-heading text-xl font-semibold text-charcoal">Good morning</p>
+                            <p class="text-xs text-sage">Monday 23 November</p>
+                            <div class="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                                {% for label, value, note in showcase_stats %}
+                                <div class="rounded-xl border border-sand bg-white px-3.5 py-3"><p class="text-[11px] text-sage">{{ label }}</p><p class="font-heading text-2xl text-charcoal">{{ value }}</p><p class="text-[11px] text-sage">{{ note }}</p></div>
                                 {% endfor %}
-                                {# The yard: barns and the arena #}
-                                <path d="M30 238 206 228 210 300 36 304Z" fill="#E6E1D1" stroke="#fff" stroke-width="3"/>
-                                <rect x="50" y="248" width="66" height="34" rx="3" fill="#A0522D" opacity=".85"/><text x="83" y="270" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">Barn A</text>
-                                <rect x="124" y="248" width="66" height="34" rx="3" fill="#A0522D" opacity=".7"/><text x="157" y="270" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">Barn B</text>
-                                <rect x="214" y="240" width="130" height="54" rx="6" fill="#EDE5D2" stroke="#fff" stroke-width="3"/><text x="279" y="271" fill="#56737A" font-size="10.5" font-weight="700" text-anchor="middle">Arena</text>
-                            </svg>
-                            <p class="mt-2 text-xs text-sage"><span class="hidden sm:inline">Point at or click</span><span class="sm:hidden">Tap</span> a paddock. In the app, each one is drawn on a satellite map.</p>
-                        </div>
-                        <div class="border-t border-sand p-5 md:border-l md:border-t-0">
-                            {% for field in showcase_fields %}
-                            <div data-field-info="{{ field.key }}" {% if not forloop.first %}hidden{% endif %} aria-live="polite">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-sage">Paddock</p>
-                                <h3 class="mt-1 font-heading text-2xl font-semibold text-forest">{{ field.name }}</h3>
-                                <p class="mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {% if field.usage == 'Rested' %}bg-sage/15 text-sage{% elif field.usage == 'Hay' %}bg-saddle/10 text-saddle{% else %}bg-meadow/10 text-meadow{% endif %}">{{ field.usage }}</p>
-                                <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                                    <div class="rounded-lg bg-parchment p-3"><dt class="text-xs text-sage">Area</dt><dd class="font-semibold">{{ field.area }} ha</dd></div>
-                                    <div class="rounded-lg bg-parchment p-3"><dt class="text-xs text-sage">Horses</dt><dd class="font-semibold">{% if field.capacity %}{{ field.horses|length }} of {{ field.capacity }}{% else %}None{% endif %}</dd></div>
-                                </dl>
-                                {% if field.horses %}
-                                <p class="mt-4 text-xs font-semibold uppercase tracking-wider text-sage">Horses here</p>
-                                <ul class="mt-2 flex flex-wrap gap-1.5 text-xs">{% for name in field.horses %}<li class="rounded-full bg-forest/10 px-2.5 py-1 font-semibold text-forest">{{ name }}</li>{% endfor %}</ul>
-                                {% endif %}
-                                {% if field.note %}<p class="mt-4 text-sm text-sage">{{ field.note }}.</p>{% endif %}
                             </div>
-                            {% endfor %}
+                            <div class="mt-3 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
+                                <div class="overflow-hidden rounded-xl border border-sand bg-white">
+                                    <div class="flex items-center justify-between border-b border-sand bg-parchment/50 px-4 py-2.5"><p class="font-heading font-semibold text-forest">Next 7 days</p><span class="rounded-md border border-sand bg-white px-2 py-0.5 text-[11px]">Month</span></div>
+                                    {% for day, date, items in showcase_week %}
+                                    <div class="border-b border-sand/70 px-4 py-2.5 last:border-0">
+                                        <p class="text-xs"><strong class="font-semibold">{{ day }}</strong> <span class="text-sage">{{ date }}</span></p>
+                                        {% for what, who, action, button in items %}
+                                        <div class="mt-1.5 flex items-center justify-between gap-3">
+                                            <p class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-forest"></span><span><span class="font-semibold">{{ what }}</span><br><span class="text-sage">{{ who }}</span></span></p>
+                                            {% if button %}<span class="shrink-0 rounded-md bg-saddle px-2.5 py-1 text-[11px] font-semibold text-white">{{ action }}</span>{% else %}<span class="shrink-0 text-[11px] font-semibold text-forest">{{ action }}</span>{% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="overflow-hidden rounded-xl border border-sand bg-white">
+                                    <div class="border-b border-sand bg-parchment/50 px-4 py-2.5"><p class="font-heading font-semibold text-forest">Timeline</p></div>
+                                    <div class="space-y-3 px-4 py-3">
+                                        {% for day, entries in showcase_timeline %}
+                                        <p class="font-mono text-[10px] uppercase tracking-wider text-sage">{{ day }}</p>
+                                        {% for names, text in entries %}
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            {% for name, coat in names %}<span class="inline-flex items-center gap-1 rounded-full border border-sand px-2 py-0.5 text-[11px]"><span class="h-2 w-2 rounded-full" style="background:{{ coat }}"></span>{{ name }}</span>{% endfor %}
+                                            <span class="text-xs">{{ text }}</span>
+                                        </div>
+                                        {% endfor %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                {# ── Invoicing ── #}
-                <div role="tabpanel" id="panel-invoicing" aria-labelledby="tab-invoicing" data-panel="invoicing" hidden>
-                    <div class="grid gap-6 bg-parchment/40 p-4 sm:p-6 md:grid-cols-[1.2fr_1fr]">
-                        <div class="rounded-xl border border-sand bg-white p-5 shadow-sm">
-                            <div class="flex items-start justify-between gap-4 border-b border-sand pb-4">
-                                <div><p class="font-heading text-lg font-semibold text-forest">Invoice {{ invoice.number }}</p><p class="text-sm text-sage">{{ invoice.owner }} · {{ invoice.horse }} · {{ invoice.period }}</p></div>
-                                <span class="rounded-full bg-parchment px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sage">Example</span>
+                        {# Horses: the list, then a horse's page #}
+                        <div role="tabpanel" id="panel-horses" aria-labelledby="tab-horses" data-panel="horses" hidden>
+                            <div data-view="list">
+                                <p class="font-heading text-xl font-semibold text-charcoal">Horses</p>
+                                <div class="mt-3 overflow-hidden rounded-xl border border-sand bg-white">
+                                    <div class="flex items-center justify-between border-b border-sand bg-parchment/50 px-4 py-2"><p class="font-semibold text-forest">All horses <span class="font-normal text-sage">· Name A–Z</span></p><span class="rounded-full border border-forest/20 px-2 py-0.5 text-[11px] text-forest">{{ hero_horses|length }} horses</span></div>
+                                    <div class="hidden grid-cols-[2fr_1fr_1fr] border-b border-sand bg-[#EEF1F0] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-sage sm:grid"><span>Horse</span><span>Owner</span><span>Location</span></div>
+                                    {% for horse in hero_horses %}
+                                    <button type="button" data-go="horse-{{ horse.key }}" class="grid w-full grid-cols-[2fr_1fr] items-center border-b border-sand/70 px-4 py-2.5 text-left transition last:border-0 hover:bg-parchment/60 sm:grid-cols-[2fr_1fr_1fr]">
+                                        <span class="flex items-center gap-2.5"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style="background:{{ horse.coat }}"><svg class="h-4 w-4 {% if horse.light %}text-charcoal{% else %}text-white{% endif %}"><use href="#i-horse"/></svg></span><span><span class="font-semibold">{{ horse.name }}</span> <span class="text-[11px] text-sage">{{ horse.age }} · {{ horse.colour }} · {{ horse.sex }}</span></span></span>
+                                        <span class="hidden sm:block">{{ horse.owner_line }}</span>
+                                        <span>{{ horse.location }}</span>
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                                <p class="mt-2 text-xs text-sage">Click a horse to open its page.</p>
                             </div>
-                            <table class="mt-3 w-full text-sm">
-                                <tbody>
-                                    {% for label, amount in invoice.lines %}<tr class="border-b border-sand/70"><td class="py-2.5">{{ label }}</td><td class="py-2.5 text-right tabular-nums">{{ amount }}</td></tr>{% endfor %}
-                                </tbody>
-                                <tfoot><tr><td class="pt-3 font-heading font-semibold">Total</td><td class="pt-3 text-right font-heading text-xl font-semibold text-forest tabular-nums">{{ invoice.total }}</td></tr></tfoot>
-                            </table>
-                            <p class="mt-4 text-xs text-sage">Co-owned horse? Each owner gets an invoice for their share.</p>
-                        </div>
-                        <ol class="space-y-3" data-invoice-steps>
-                            {% for title, text in invoice.steps %}
-                            <li class="mk-step flex items-center gap-3 rounded-xl border border-sand bg-white p-3 transition duration-500" data-step>
-                                <span class="mk-step-dot flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sand text-white transition duration-500">{% include "marketing/_icon.html" with name="check" cls="h-4 w-4" %}</span>
-                                <span><span class="block font-semibold text-charcoal">{{ title }}</span><span class="block text-xs text-sage">{{ text }}</span></span>
-                            </li>
+                            {% for horse in hero_horses %}
+                            <div data-view="horse-{{ horse.key }}" hidden>
+                                <button type="button" data-go="list" class="text-xs text-sage hover:text-forest">&lsaquo; All horses</button>
+                                <div class="mt-2 grid gap-4 rounded-xl border border-sand bg-[#FBFAF6] p-4 lg:grid-cols-[auto_1fr_1fr]">
+                                    <div class="flex h-20 w-20 items-center justify-center rounded-xl lg:h-28 lg:w-28" style="background:{{ horse.coat }}"><svg class="h-10 w-10 lg:h-14 lg:w-14 {% if horse.light %}text-charcoal{% else %}text-white{% endif %}"><use href="#i-horse"/></svg></div>
+                                    <div>
+                                        <p class="font-heading text-xl font-semibold text-charcoal">{{ horse.name }}</p>
+                                        <p class="text-xs text-sage">{{ horse.age }} · {{ horse.colour }} · {{ horse.sex }}</p>
+                                        <p class="mt-1 text-xs">Billed to <strong class="font-semibold">{{ horse.owner_line }}</strong></p>
+                                        <div class="mt-3 border-t border-sand pt-3">
+                                            <p class="flex items-center justify-between text-xs"><span class="flex items-center gap-1.5 font-semibold text-forest"><span class="h-2 w-2 rounded-full bg-forest"></span>Current placement</span><span class="text-[11px] text-sage">{{ horse.stay }}</span></p>
+                                            <dl class="mt-2 grid grid-cols-2 gap-2 text-xs"><div><dt class="text-[11px] text-sage">Location</dt><dd>{{ horse.location }}</dd></div><div><dt class="text-[11px] text-sage">Arrived</dt><dd>{{ horse.arrived }}</dd></div><div class="col-span-2"><dt class="text-[11px] text-sage">Rate</dt><dd>{{ horse.rate }}</dd></div></dl>
+                                        </div>
+                                    </div>
+                                    <div class="lg:border-l lg:border-sand lg:pl-4">
+                                        <div class="flex gap-1.5"><span class="rounded-md bg-saddle px-2.5 py-1 text-[11px] font-semibold text-white">Move</span><span class="rounded-md border border-sand bg-white px-2.5 py-1 text-[11px]">Edit</span><span class="rounded-md border border-sand bg-white px-2.5 py-1 text-[11px]">More</span></div>
+                                        <p class="mt-3 text-[11px] font-semibold text-forest">Pedigree</p>
+                                        <div class="mt-1 grid grid-cols-2 gap-1.5 text-xs"><div class="rounded-md border border-sand bg-white px-2 py-1"><p class="text-[10px] uppercase text-sage">Sire</p>{{ horse.sire }}</div><div class="rounded-md border border-sand bg-white px-2 py-1"><p class="text-[10px] uppercase text-sage">Dam</p>{{ horse.dam }}</div></div>
+                                        <p class="mt-3 text-[11px] font-semibold text-forest">Owners</p>
+                                        {% for name, share in horse.shares %}<p class="flex justify-between text-xs"><span>{{ name }}</span><span class="text-sage">{{ share }}%</span></p>{% endfor %}
+                                        <p class="mt-2 text-[11px] text-meadow">Passport &#10003; · Microchip &#10003; · {{ horse.weight }}</p>
+                                    </div>
+                                </div>
+                                <div class="mt-3 grid gap-3 lg:grid-cols-[1.5fr_1fr]">
+                                    <div class="overflow-hidden rounded-xl border border-sand bg-white">
+                                        <div class="border-b border-sand bg-parchment/50 px-4 py-2"><p class="font-heading font-semibold text-forest">Timeline</p></div>
+                                        <div class="px-4 py-3">
+                                            <div class="flex flex-wrap gap-1.5 text-[11px]"><span class="rounded-full border border-forest px-2 py-0.5">All {{ horse.timeline|length }}</span><span class="rounded-full border border-sand px-2 py-0.5">Health</span><span class="rounded-full border border-sand px-2 py-0.5">Moves</span></div>
+                                            <ol class="mt-3 space-y-2 border-l-2 border-sand pl-3">
+                                                {% for event, when in horse.timeline %}<li class="rounded-lg border border-sand px-3 py-2"><p class="flex justify-between gap-3"><span class="font-semibold">{{ event }}</span><span class="shrink-0 text-[11px] text-sage">{{ when }}</span></p></li>{% endfor %}
+                                            </ol>
+                                        </div>
+                                    </div>
+                                    <div class="overflow-hidden rounded-xl border border-sand bg-white">
+                                        <div class="border-b border-sand bg-parchment/50 px-4 py-2"><p class="font-heading font-semibold text-forest">Due and billing</p></div>
+                                        <div class="space-y-2 px-4 py-3 text-xs">
+                                            <p class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-saddle"></span>{{ horse.due }}</p>
+                                            <p class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-meadow"></span>{{ horse.invoice }}</p>
+                                            {% if horse.coowned %}<p class="text-[11px] text-sage">Co-owned: each owner is invoiced their share.</p>{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             {% endfor %}
-                            <li><button type="button" data-replay class="inline-flex items-center gap-2 text-sm font-semibold text-forest hover:underline">Play again</button></li>
-                        </ol>
+                        </div>
+
+                        {# Locations: the map, or the cards #}
+                        <div role="tabpanel" id="panel-maps" aria-labelledby="tab-maps" data-panel="maps" hidden>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <p class="font-heading text-xl font-semibold text-charcoal">Locations</p>
+                                <div class="flex gap-1 rounded-lg border border-sand bg-white p-0.5 text-xs" role="group" aria-label="View">
+                                    <button type="button" data-go="map" aria-pressed="true" class="rounded-md px-2.5 py-1 aria-pressed:bg-forest aria-pressed:text-white">Map</button>
+                                    <button type="button" data-go="cards" aria-pressed="false" class="rounded-md px-2.5 py-1 aria-pressed:bg-forest aria-pressed:text-white">Cards</button>
+                                </div>
+                            </div>
+                            <div data-view="map" class="mt-3 grid gap-3 lg:grid-cols-[1fr_220px]">
+                                <div class="overflow-hidden rounded-xl border border-sand bg-[#DCE6D6] p-2">
+                                    <svg viewBox="0 0 520 330" class="h-auto w-full" font-family="DM Sans, sans-serif" role="group" aria-label="Map of the yard">
+                                        <path d="M0 312C140 300 360 318 520 306" stroke="#C9B994" stroke-width="10" fill="none" opacity=".8"/>
+                                        {% for field in showcase_fields %}
+                                        <g role="button" tabindex="0" data-pick-field="{{ field.key }}" aria-label="{{ field.name }}: {{ field.usage }}" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}" class="group cursor-pointer outline-none">
+                                            <path d="{{ field.path }}" fill="{% if field.usage == 'Rested' %}#C8D3C2{% elif field.usage == 'Hay' %}#E4DCB8{% else %}#B7CCAE{% endif %}" stroke="#fff" stroke-width="3"/>
+                                            <path d="{{ field.path }}" fill="none" stroke="#3D5A63" stroke-width="3" class="opacity-0 transition group-hover:opacity-60 group-focus-visible:opacity-100 group-aria-pressed:opacity-100"/>
+                                            <text x="{{ field.lx }}" y="{{ field.ly }}" fill="#2F4850" font-size="12" font-weight="700">{{ field.name }}</text>
+                                            <text x="{{ field.lx }}" y="{{ field.ly|add:15 }}" fill="#56737A" font-size="10.5">{{ field.usage }}{% if field.horses %} · {{ field.horses|length }}{% endif %}</text>
+                                            {% for x, y in field.dots %}<circle cx="{{ x }}" cy="{{ y }}" r="6" fill="#3D5A63" stroke="#fff" stroke-width="2"/>{% endfor %}
+                                        </g>
+                                        {% endfor %}
+                                        <path d="M30 238 206 228 210 300 36 304Z" fill="#E6E1D1" stroke="#fff" stroke-width="3"/>
+                                        <rect x="50" y="248" width="66" height="34" rx="3" fill="#A0522D" opacity=".85"/><text x="83" y="270" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">Barn A</text>
+                                        <rect x="124" y="248" width="66" height="34" rx="3" fill="#A0522D" opacity=".7"/><text x="157" y="270" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">Barn B</text>
+                                        <rect x="214" y="240" width="130" height="54" rx="6" fill="#EDE5D2" stroke="#fff" stroke-width="3"/><text x="279" y="271" fill="#56737A" font-size="10.5" font-weight="700" text-anchor="middle">Arena</text>
+                                    </svg>
+                                </div>
+                                <div>
+                                    {% for field in showcase_fields %}
+                                    <div data-field-info="{{ field.key }}" {% if not forloop.first %}hidden{% endif %} aria-live="polite">{% include "marketing/_location_card.html" %}</div>
+                                    {% endfor %}
+                                    <p class="mt-2 text-[11px] text-sage"><span class="hidden sm:inline">Point at or click</span><span class="sm:hidden">Tap</span> a paddock. In the app, each one is drawn on a satellite map.</p>
+                                </div>
+                            </div>
+                            <div data-view="cards" class="mt-3" hidden>
+                                <p class="flex items-center gap-2 text-xs"><strong class="font-semibold">Hill Farm</strong><span class="text-sage">{{ showcase_fields|length }} paddocks</span></p>
+                                <div class="mt-2 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                                    {% for field in showcase_fields %}{% include "marketing/_location_card.html" %}{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Invoices: the list, then an invoice #}
+                        <div role="tabpanel" id="panel-invoicing" aria-labelledby="tab-invoicing" data-panel="invoicing" hidden>
+                            <div data-view="list">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <p class="font-heading text-xl font-semibold text-charcoal">Invoices</p>
+                                    <div class="flex gap-1.5 text-[11px]"><span class="hidden rounded-md border border-sand bg-white px-2.5 py-1 sm:inline">Aged debtors</span><span class="rounded-md border border-sand bg-white px-2.5 py-1">Generate Monthly</span><span class="rounded-md bg-saddle px-2.5 py-1 font-semibold text-white">+ Create Invoice</span></div>
+                                </div>
+                                <div class="mt-3 rounded-xl border border-sand bg-white px-4 py-2 text-xs">{{ showcase_invoices|length }} invoices · Invoiced: <strong>£1,661.50</strong> · <span class="text-error-red">Outstanding: <strong>£774.00</strong></span></div>
+                                <div class="mt-2 overflow-hidden rounded-xl border border-sand bg-white">
+                                    <div class="hidden grid-cols-[1fr_1.2fr_1fr_0.8fr_0.7fr] border-b border-sand bg-[#EEF1F0] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-sage sm:grid"><span>Invoice</span><span>Owner</span><span>Period</span><span class="text-right">Total</span><span class="text-right">Status</span></div>
+                                    {% for inv in showcase_invoices %}
+                                    <button type="button" data-go="{{ inv.key }}" class="grid w-full grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-sand/70 px-4 py-2.5 text-left transition last:border-0 hover:bg-parchment/60 sm:grid-cols-[1fr_1.2fr_1fr_0.8fr_0.7fr]">
+                                        <span class="hidden sm:block">{{ inv.number }}</span><span>{{ inv.owner }}</span><span class="hidden text-sage sm:block">1 Nov – 30 Nov 2026</span><span class="text-right font-semibold">{{ inv.total }}</span>
+                                        <span class="text-right">{% include "marketing/_status.html" with status=inv.status %}</span>
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                                <p class="mt-2 text-xs text-sage">Click an invoice to open it. Made in one go from the month's records.</p>
+                            </div>
+                            {% for inv in showcase_invoices %}
+                            <div data-view="{{ inv.key }}" hidden>
+                                <button type="button" data-go="list" class="text-xs text-sage hover:text-forest">&lsaquo; All invoices</button>
+                                <div class="mt-1 flex flex-wrap items-start justify-between gap-2">
+                                    <div><p class="font-heading text-xl font-semibold text-charcoal">Invoice {{ inv.number }}</p><p class="text-xs text-sage">{{ inv.owner }} · 1 Nov – 30 Nov 2026</p></div>
+                                    <div class="flex gap-1.5 text-[11px]"><span class="rounded-md border border-sand bg-white px-2.5 py-1">Download PDF</span>{% if inv.status == 'Draft' %}<span class="rounded-md bg-saddle px-2.5 py-1 font-semibold text-white">Send Invoice</span>{% endif %}</div>
+                                </div>
+                                <div class="mt-3 grid gap-2.5 sm:grid-cols-3">
+                                    <div class="rounded-xl border border-sand bg-white"><p class="border-b border-sand bg-parchment/50 px-3 py-1.5 font-heading font-semibold text-forest">Details</p><div class="space-y-1 px-3 py-2 text-xs"><p class="text-sage">Status</p>{% include "marketing/_status.html" with status=inv.status %}{% if inv.xero %}<p class="pt-1 text-[11px] text-meadow">In Xero &#10003;</p>{% endif %}</div></div>
+                                    <div class="rounded-xl border border-sand bg-white"><p class="border-b border-sand bg-parchment/50 px-3 py-1.5 font-heading font-semibold text-forest">Bill To</p><div class="px-3 py-2 text-xs"><p>{{ inv.owner }}</p><p class="text-sage">{{ inv.email }}</p></div></div>
+                                    <div class="rounded-xl border border-sand bg-white"><p class="border-b border-sand bg-parchment/50 px-3 py-1.5 font-heading font-semibold text-forest">Balance</p><div class="px-3 py-2 text-xs"><p class="text-sage">Amount due</p><p class="font-heading text-xl">{{ inv.due }}</p><p class="flex justify-between text-sage"><span>Paid to date</span><span>{{ inv.paid }}</span></p></div></div>
+                                </div>
+                                <div class="mt-2.5 overflow-hidden rounded-xl border border-sand bg-white">
+                                    <p class="border-b border-sand bg-parchment/50 px-4 py-1.5 font-heading font-semibold text-forest">Line Items</p>
+                                    <table class="w-full text-xs">
+                                        <thead class="bg-[#EEF1F0] text-[10px] uppercase tracking-wider text-sage"><tr><th class="px-4 py-1.5 text-left font-semibold">Horse</th><th class="px-2 py-1.5 text-left font-semibold">Item</th><th class="px-4 py-1.5 text-right font-semibold">Amount</th></tr></thead>
+                                        <tbody>{% for horse, share, item, amount in inv.lines %}<tr class="border-t border-sand/70"><td class="px-4 py-2 align-top font-semibold">{{ horse }}{% if share %} <span class="font-normal text-forest">({{ share }})</span>{% endif %}</td><td class="px-2 py-2">{{ item }}</td><td class="px-4 py-2 text-right tabular-nums">{{ amount }}</td></tr>{% endfor %}</tbody>
+                                        <tfoot class="border-t-2 border-sand"><tr><td></td><td class="px-2 py-2 text-right font-semibold">Amount Due:</td><td class="px-4 py-2 text-right font-semibold tabular-nums">{{ inv.total }}</td></tr></tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
