@@ -1,121 +1,123 @@
 {% comment %}
-The Home hero: the yard seen from above at left, the owner's phone at right.
-Records flow from the paddocks and the barn to the office; the invoice and a
-health reminder go to the owner; the owner's payment comes back and is
-matched in Xero. That loop (horse records -> owner invoicing -> payment) is
-the product, so it is the picture. Owners get email today (no owner app),
-so the phone shows emails and a payment received, not a "pay" button.
-Decoration only (aria-hidden): the same facts are in the page text.
+The Home hero: the yard seen from above, and its owners. Records flow from
+the paddocks and Barn A to the office; small "pings" carry the invoice and
+a reminder out to the owners and the payment back (matched in Xero). Owners
+get email today (no owner app), so the pings are emails and a payment.
+Each stall is a button: point at it (or tap it) to see that horse's record
+(marketing/_horse_preview.html, js/marketing.js). The drawing is decoration
+(aria-hidden); the stall buttons and the preview cards are real content.
 Every animation stops with prefers-reduced-motion (marketing.input.css, mk-*).
 {% endcomment %}
-<div class="relative mx-auto w-full max-w-[640px]" aria-hidden="true">
-    <svg viewBox="0 0 560 460" class="h-auto w-full" fill="none" font-family="DM Sans, sans-serif">
+<div class="relative mx-auto w-full max-w-[640px]" data-yard>
+    <svg viewBox="0 0 560 460" class="h-auto w-full" fill="none" font-family="DM Sans, sans-serif" aria-hidden="true" focusable="false">
         <defs>
             <pattern id="mk-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v8" stroke="#88A6AD" stroke-opacity=".25" stroke-width="2"/></pattern>
             <filter id="mk-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         </defs>
-        <rect x="6" y="6" width="370" height="448" rx="26" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-opacity=".12"/>
+        <rect x="6" y="6" width="400" height="448" rx="26" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-opacity=".12"/>
         <text x="26" y="32" class="mk-fill" style="--d:.2s" fill="#fff" fill-opacity=".6" font-size="10" letter-spacing="2">THE YARD</text>
 
-        {# Fields: three paddocks that share hedge lines #}
+        {# Paddocks #}
         <g class="mk-fill" style="--d:.9s">
-            <path d="M26 58Q80 46 136 44Q141 120 134 190Q80 192 30 193Q20 125 26 58Z" fill="url(#mk-stripes)"/>
-            <path d="M136 44 246 42Q241 118 248 188L134 190Q141 120 136 44Z" fill="#88A6AD" fill-opacity=".12"/>
-            <path d="M246 42 352 48Q358 118 350 186L248 188Q241 118 246 42Z" fill="url(#mk-stripes)"/>
+            <path d="M26 58Q86 46 148 44Q153 120 146 190Q86 192 30 193Q20 125 26 58Z" fill="url(#mk-stripes)"/>
+            <path d="M148 44 268 42Q263 118 270 188L146 190Q153 120 148 44Z" fill="#88A6AD" fill-opacity=".12"/>
+            <path d="M268 42 380 48Q386 118 378 186L270 188Q263 118 268 42Z" fill="url(#mk-stripes)"/>
         </g>
-        <path class="mk-draw" style="--len:1100;--d:.1s" d="M26 58Q80 46 136 44L246 42 352 48Q358 118 350 186L134 190Q80 192 30 193Q20 125 26 58Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
-        <path class="mk-draw" style="--len:320;--d:.6s" d="M136 44Q141 120 134 190M246 42Q241 118 248 188" stroke="#88A6AD" stroke-width="1.6" stroke-opacity=".85"/>
+        <path class="mk-draw" style="--len:1150;--d:.1s" d="M26 58Q86 46 148 44L268 42 380 48Q386 118 378 186L146 190Q86 192 30 193Q20 125 26 58Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
+        <path class="mk-draw" style="--len:320;--d:.6s" d="M148 44Q153 120 146 190M268 42Q263 118 270 188" stroke="#88A6AD" stroke-width="1.6" stroke-opacity=".85"/>
         <g class="mk-fill" style="--d:1.3s" fill="#fff">
             <text x="42" y="80" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 1</text><text x="42" y="95" font-size="10" fill-opacity=".6">5 horses</text>
-            <text x="152" y="72" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 2</text><text x="152" y="87" font-size="10" fill-opacity=".6">Resting</text>
-            <text x="262" y="72" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 3</text><text x="262" y="87" font-size="10" fill-opacity=".6">3 horses</text>
+            <text x="164" y="72" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 2</text><text x="164" y="87" font-size="10" fill-opacity=".6">Resting</text>
+            <text x="284" y="72" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 3</text><text x="284" y="87" font-size="10" fill-opacity=".6">3 horses</text>
         </g>
 
-        {# Barn A, x-rayed: five stalls with a horse in each #}
+        {# Barn A: five square stalls (52 x 52), x-rayed #}
         <g class="mk-fill" style="--d:1s">
-            <rect x="26" y="232" width="220" height="84" rx="8" fill="#fff" fill-opacity=".07"/>
-            <rect x="114" y="236" width="44" height="76" rx="4" fill="#A0522D" fill-opacity=".55"/>
+            <rect x="26" y="236" width="260" height="52" rx="6" fill="#fff" fill-opacity=".07"/>
+            <rect x="132" y="238" width="48" height="48" rx="3" fill="#A0522D" fill-opacity=".55"/>
         </g>
-        <rect class="mk-draw" style="--len:620;--d:.6s" x="26" y="232" width="220" height="84" rx="8" stroke="#fff" stroke-opacity=".9" stroke-width="2"/>
-        <path class="mk-draw" style="--len:400;--d:1s" d="M70 232v84M114 232v84M158 232v84M202 232v84" stroke="#fff" stroke-opacity=".35"/>
+        <rect class="mk-draw" style="--len:640;--d:.6s" x="26" y="236" width="260" height="52" rx="6" stroke="#fff" stroke-opacity=".9" stroke-width="2"/>
+        <path class="mk-draw" style="--len:260;--d:1s" d="M78 236v52M130 236v52M182 236v52M234 236v52" stroke="#fff" stroke-opacity=".35"/>
         <g class="mk-fill" style="--d:1.6s" fill="#fff" font-size="10" font-family="Source Sans 3, sans-serif" text-anchor="middle">
-            <text x="48" y="279" fill-opacity=".85">Bramble</text><text x="92" y="279" fill-opacity=".85">Duke</text>
-            <text x="136" y="279">Pip</text><text x="180" y="279" fill-opacity=".85">Maple</text><text x="224" y="279" fill-opacity=".85">Otis</text>
+            {% for horse in hero_horses %}<text x="{{ horse.x }}" y="266"{% if horse.key != 'pip' %} fill-opacity=".9"{% endif %}>{{ horse.name }}</text>{% endfor %}
         </g>
-        <text x="26" y="336" class="mk-fill" style="--d:1.5s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5">BARN A</text>
+        <text x="26" y="308" class="mk-fill" style="--d:1.5s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5">BARN A</text>
 
         {# Office, and Xero under it #}
-        <rect class="mk-draw" style="--len:300;--d:.8s" x="268" y="246" width="88" height="52" rx="10" stroke="#fff" stroke-width="2"/>
-        <text x="312" y="277" class="mk-fill" style="--d:1.6s" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">Office</text>
-        <rect class="mk-draw" style="--len:260;--d:1s" x="276" y="362" width="72" height="40" rx="10" stroke="#E6E1D1" stroke-opacity=".7" stroke-width="1.5"/>
-        <text x="312" y="387" class="mk-fill" style="--d:1.7s" fill="#E6E1D1" font-size="12" font-weight="600" text-anchor="middle">Xero</text>
+        <rect class="mk-draw" style="--len:300;--d:.8s" x="306" y="236" width="80" height="52" rx="10" stroke="#fff" stroke-width="2"/>
+        <text x="346" y="267" class="mk-fill" style="--d:1.6s" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">Office</text>
+        <rect class="mk-draw" style="--len:240;--d:1s" x="314" y="360" width="64" height="36" rx="10" stroke="#E6E1D1" stroke-opacity=".7" stroke-width="1.5"/>
+        <text x="346" y="383" class="mk-fill" style="--d:1.7s" fill="#E6E1D1" font-size="12" font-weight="600" text-anchor="middle">Xero</text>
 
-        {# The owner's phone #}
-        <text x="466" y="32" class="mk-fill" style="--d:.4s" fill="#fff" fill-opacity=".6" font-size="10" letter-spacing="2" text-anchor="middle">THE OWNER</text>
-        <rect class="mk-draw" style="--len:900;--d:.5s" x="394" y="44" width="146" height="326" rx="24" stroke="#fff" stroke-opacity=".85" stroke-width="2"/>
-        <rect class="mk-fill" style="--d:.9s" x="394" y="44" width="146" height="326" rx="24" fill="#fff" fill-opacity=".06"/>
-        <rect class="mk-fill" style="--d:1s" x="447" y="54" width="40" height="5" rx="2.5" fill="#fff" fill-opacity=".35"/>
-        <g class="mk-fill" style="--d:1.2s">
-            <circle cx="418" cy="84" r="10" fill="#E6E1D1"/><text x="418" y="88" fill="#3D5A63" font-size="10" font-weight="700" text-anchor="middle">S</text>
-            <text x="434" y="82" fill="#fff" font-size="11" font-weight="600">Sarah</text><text x="434" y="95" fill="#fff" fill-opacity=".6" font-size="9">Owner of Pip</text>
-        </g>
-        {# 1. The invoice arrives #}
-        <g class="mk-fill" style="--d:2.4s">
-            <rect x="404" y="112" width="126" height="92" rx="12" fill="#fff"/>
-            <text x="416" y="132" fill="#56737A" font-size="8.5" letter-spacing="1">INVOICE · EMAIL</text>
-            <text x="416" y="150" fill="#2D2D2D" font-size="10.5" font-weight="600">Livery, November</text>
-            <text x="416" y="164" fill="#56737A" font-size="9">Pip · INV-1042</text>
-            <text x="416" y="191" fill="#3D5A63" font-size="17" font-weight="700">£640.00</text>
-            <rect x="496" y="180" width="24" height="14" rx="4" fill="#F5F2EA"/><text x="508" y="190" fill="#56737A" font-size="7.5" font-weight="700" text-anchor="middle">PDF</text>
-        </g>
-        {# 2. A health reminder #}
-        <g class="mk-fill" style="--d:3s">
-            <rect x="404" y="214" width="126" height="56" rx="12" fill="#fff" fill-opacity=".92"/>
-            <circle cx="417" cy="232" r="3.5" fill="#A0522D"/>
-            <text x="426" y="235" fill="#56737A" font-size="8.5" letter-spacing="1">REMINDER</text>
-            <text x="416" y="253" fill="#2D2D2D" font-size="10" font-weight="600">Pip: flu jab due</text>
-            <text x="416" y="264" fill="#56737A" font-size="9">12 December</text>
-        </g>
-        {# 3. The payment comes back, matched in Xero #}
-        <g class="mk-fill" style="--d:4.2s">
-            <rect x="404" y="282" width="126" height="62" rx="12" fill="#3F7A4F"/>
-            <circle cx="420" cy="302" r="7" fill="#fff"/><path d="m416.5 302 2.5 2.5 4.5-5" stroke="#3F7A4F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="432" y="306" fill="#fff" font-size="10.5" font-weight="700">Paid £640.00</text>
-            <text x="416" y="328" fill="#fff" fill-opacity=".85" font-size="9">Matched in Xero</text>
+        {# The owners #}
+        <g class="mk-fill" style="--d:1.1s">
+            <circle cx="486" cy="262" r="34" fill="#fff" fill-opacity=".1" stroke="#fff" stroke-opacity=".8" stroke-width="2"/>
+            <g transform="translate(470 246)" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none">
+                <circle cx="12" cy="10" r="5"/><path d="M3 28a9 9 0 0 1 18 0"/><circle cx="24" cy="12" r="4"/><path d="M22 20a8 8 0 0 1 10 8"/>
+            </g>
+            <text x="486" y="316" fill="#fff" fill-opacity=".85" font-size="11" letter-spacing="2" text-anchor="middle">OWNERS</text>
+            <text x="486" y="331" fill="#fff" fill-opacity=".55" font-size="9.5" text-anchor="middle">invoices and reminders</text>
+            <text x="486" y="344" fill="#fff" fill-opacity=".55" font-size="9.5" text-anchor="middle">by email</text>
         </g>
 
-        {# Data lines #}
+        {# Data lines in the yard #}
         <g stroke="#E6E1D1" stroke-opacity=".55" stroke-width="1.5" class="mk-fill" style="--d:1.8s">
-            <path id="mk-p1" class="mk-flow" d="M80 193v39"/>
-            <path id="mk-p2" class="mk-flow" d="M246 274h22"/>
-            <path id="mk-p3" class="mk-flow" d="M300 188c4 20 8 40 8 58"/>
-            <path id="mk-p5" class="mk-flow" d="M312 298v64"/>
+            <path id="mk-p1" class="mk-flow" d="M86 193v43"/>
+            <path id="mk-p2" class="mk-flow" d="M286 262h20"/>
+            <path id="mk-p3" class="mk-flow" d="M330 188v48"/>
+            <path id="mk-p5" class="mk-flow" d="M346 288v72"/>
         </g>
-        <g stroke-width="1.8" class="mk-fill" style="--d:2s">
-            <path id="mk-out" class="mk-flow" d="M356 262c22 0 24-104 48-104" stroke="#fff" stroke-opacity=".8"/>
-            <path id="mk-back" class="mk-flow" d="M404 314c-26 0-24-30-48-30" stroke="#88D39B" stroke-opacity=".9"/>
+        {# Office <-> owners: out along the top arc, back along the bottom #}
+        <g stroke-width="1.5" class="mk-fill" style="--d:2s">
+            <path id="mk-out" d="M386 250C414 214 436 210 458 236" stroke="#fff" stroke-opacity=".45" stroke-dasharray="3 5"/>
+            <path id="mk-back" d="M462 290C440 318 414 316 386 276" stroke="#88D39B" stroke-opacity=".6" stroke-dasharray="3 5"/>
         </g>
         <g class="mk-moving">
             <circle r="3.5" fill="#fff"><animateMotion dur="2.4s" repeatCount="indefinite" begin="2s"><mpath href="#mk-p1"/></animateMotion></circle>
-            <circle r="3.5" fill="#fff"><animateMotion dur="1.6s" repeatCount="indefinite" begin="2.3s"><mpath href="#mk-p2"/></animateMotion></circle>
-            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="2.6s" repeatCount="indefinite" begin="2.2s"><mpath href="#mk-p3"/></animateMotion></circle>
+            <circle r="3.5" fill="#fff"><animateMotion dur="1.4s" repeatCount="indefinite" begin="2.3s"><mpath href="#mk-p2"/></animateMotion></circle>
+            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="2.2s" repeatCount="indefinite" begin="2.2s"><mpath href="#mk-p3"/></animateMotion></circle>
             <circle r="3.5" fill="#E6E1D1"><animateMotion dur="2.2s" repeatCount="indefinite" begin="3s"><mpath href="#mk-p5"/></animateMotion></circle>
-            <circle r="4.5" fill="#fff"><animateMotion dur="2.2s" repeatCount="indefinite" begin="2.2s"><mpath href="#mk-out"/></animateMotion></circle>
-            <circle r="4.5" fill="#88D39B"><animateMotion dur="2.2s" repeatCount="indefinite" begin="3.6s"><mpath href="#mk-back"/></animateMotion></circle>
+            {# Pings: a small label travels the arc, then fades; one every 2 s, each repeating every 6 s #}
+            <g opacity="0">
+                <rect x="-34" y="-10" width="68" height="20" rx="10" fill="#fff"/>
+                <text y="3.5" fill="#3D5A63" font-size="9.5" font-weight="700" text-anchor="middle">Invoice £640</text>
+                <animateMotion dur="6s" begin="2.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.3;1" calcMode="linear"><mpath href="#mk-out"/></animateMotion>
+                <animate attributeName="opacity" dur="6s" begin="2.4s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.05;0.3;0.36;1"/>
+            </g>
+            <g opacity="0">
+                <rect x="-36" y="-10" width="72" height="20" rx="10" fill="#fff"/>
+                <circle cx="-25" cy="0" r="3" fill="#A0522D"/>
+                <text x="4" y="3.5" fill="#3D5A63" font-size="9.5" font-weight="700" text-anchor="middle">Flu jab due</text>
+                <animateMotion dur="6s" begin="4.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.3;1" calcMode="linear"><mpath href="#mk-out"/></animateMotion>
+                <animate attributeName="opacity" dur="6s" begin="4.4s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.05;0.3;0.36;1"/>
+            </g>
+            <g opacity="0">
+                <rect x="-34" y="-10" width="68" height="20" rx="10" fill="#3F7A4F"/>
+                <text y="3.5" fill="#fff" font-size="9.5" font-weight="700" text-anchor="middle">Paid &#10003;</text>
+                <animateMotion dur="6s" begin="6.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.3;1" calcMode="linear"><mpath href="#mk-back"/></animateMotion>
+                <animate attributeName="opacity" dur="6s" begin="6.4s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.05;0.3;0.36;1"/>
+            </g>
         </g>
 
         {# Live pins #}
-        <circle class="mk-pulse" style="--d:2s" cx="136" cy="252" r="8" fill="#A0522D"/>
-        <circle class="mk-fill" style="--d:1.8s" cx="136" cy="252" r="5" fill="#fff" stroke="#A0522D" stroke-width="3"/>
-        <circle class="mk-pulse" style="--d:2.6s" cx="80" cy="150" r="8" fill="#3F7A4F"/>
-        <circle class="mk-fill" style="--d:1.9s" cx="80" cy="150" r="5" fill="#fff" stroke="#3F7A4F" stroke-width="3"/>
+        <circle class="mk-pulse" style="--d:2s" cx="156" cy="262" r="10" fill="#A0522D"/>
+        <circle class="mk-pulse" style="--d:2.6s" cx="86" cy="150" r="8" fill="#3F7A4F"/>
+        <circle class="mk-fill" style="--d:1.9s" cx="86" cy="150" r="5" fill="#fff" stroke="#3F7A4F" stroke-width="3"/>
     </svg>
 
-    {# Floating cards (HTML, so the words stay sharp) #}
-    <div class="mk-card absolute left-[-3%] top-[24%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.2s">
+    {# Stall buttons over the drawing: point at one, or tap it, to see the horse's record #}
+    {% for horse in hero_horses %}
+    <button type="button" data-horse="{{ horse.key }}" aria-controls="horse-{{ horse.key }}" aria-expanded="false"
+            aria-label="See {{ horse.name }}'s record"
+            class="absolute cursor-pointer rounded-sm outline-none transition hover:bg-white/15 focus-visible:ring-4 focus-visible:ring-sand aria-expanded:bg-white/15"
+            style="left:{{ horse.left }}%;top:51.30%;width:9.286%;height:11.304%"></button>
+    {% endfor %}
+    <p class="mk-fade-in pointer-events-none absolute left-[4.6%] top-[69.5%] rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/85 ring-1 ring-white/20" style="--d:2.4s">
+        <span class="hidden sm:inline">Point at</span><span class="sm:hidden">Tap</span> a horse to see its record
+    </p>
+    {% for horse in hero_horses %}{% include "marketing/_horse_preview.html" %}{% endfor %}
+
+    <div class="mk-card pointer-events-none absolute left-[-3%] top-[22%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.2s" aria-hidden="true">
         <span class="h-2 w-2 rounded-full bg-meadow"></span><span><strong class="font-semibold">Bramble</strong> moved to Field 1</span>
-    </div>
-    <div class="mk-card absolute bottom-[14%] left-[1%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.8s">
-        <span class="h-2 w-2 rounded-full bg-saddle"></span><span><strong class="font-semibold">Farrier due</strong> · Pip</span>
     </div>
 </div>

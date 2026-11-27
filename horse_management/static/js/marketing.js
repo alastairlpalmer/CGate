@@ -155,3 +155,47 @@
         watch.observe(result);
     }
 })();
+
+// Home hero: point at a stall (or tap it, or Tab to it) to see that horse's
+// record (marketing/_horse_preview.html). One card at a time.
+(function () {
+    'use strict';
+    var yard = document.querySelector('[data-yard]');
+    if (!yard) { return; }
+    var buttons = yard.querySelectorAll('[data-horse]');
+    var open = null;
+    var pinned = false;
+
+    function show(key, pin) {
+        hide();
+        var card = yard.querySelector('[data-horse-card="' + key + '"]');
+        var button = yard.querySelector('[data-horse="' + key + '"]');
+        if (!card || !button) { return; }
+        card.hidden = false;
+        button.setAttribute('aria-expanded', 'true');
+        open = key;
+        pinned = !!pin;
+    }
+    function hide() {
+        if (!open) { return; }
+        var card = yard.querySelector('[data-horse-card="' + open + '"]');
+        var button = yard.querySelector('[data-horse="' + open + '"]');
+        if (card) { card.hidden = true; }
+        if (button) { button.setAttribute('aria-expanded', 'false'); }
+        open = null;
+        pinned = false;
+    }
+    for (var i = 0; i < buttons.length; i++) {
+        buttons[i].addEventListener('mouseenter', function () { if (!pinned) { show(this.getAttribute('data-horse')); } });
+        buttons[i].addEventListener('mouseleave', function () { if (!pinned) { hide(); } });
+        buttons[i].addEventListener('focus', function () { show(this.getAttribute('data-horse')); });
+        buttons[i].addEventListener('blur', function () { if (!pinned) { hide(); } });
+        buttons[i].addEventListener('click', function (e) {
+            var key = this.getAttribute('data-horse');
+            if (open === key && pinned) { hide(); } else { show(key, true); }
+            e.stopPropagation();
+        });
+    }
+    document.addEventListener('click', function (e) { if (open && !e.target.closest('[data-horse-card]')) { hide(); } });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hide(); } });
+})();
