@@ -32,7 +32,7 @@ out of band.
                 </button>
             </div>
         </header>
-        <div id="notif-panel" class="notif-panel" data-src="{% url 'notification_panel' %}"
+        <div id="notif-panel" class="notif-panel" data-lazy-load data-src="{% url 'notification_panel' %}"
              hx-target="this" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" aria-busy="false">
             <div class="p-4 space-y-3" aria-hidden="true">
                 <div class="skeleton-text w-2/3"></div><div class="skeleton-text w-1/2"></div><div class="skeleton-text w-3/4"></div>

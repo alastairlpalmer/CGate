@@ -236,6 +236,9 @@
             });
         }
         if (isSheet(detail.target)) { return; }     // popup.js says it in the sheet
+        // A part that loads by itself says it in place (showLazyFailure),
+        // with its own Try again. A second message on top covered it.
+        if (elt && elt.closest && elt.closest('[data-lazy-load]')) { return; }
         if (!byPerson) { return; }
         var message = failureMessage(kind, config.verb, status);
         var action = null;
@@ -251,7 +254,7 @@
         notice('error', message.text, action);
     }
     // A part of the page that loads after the page ([data-lazy-load]: the
-    // dashboard's Timeline and Money) and failed. It stayed a grey
+    // dashboard's Timeline and Money, the notification panel) and failed. It stayed a grey
     // placeholder for good, with no word (pre-launch review). It now says
     // so, with a Try again button.
     function showLazyFailure(e) {
@@ -260,7 +263,9 @@
         if (!box) { return; }
         var busy = box.querySelector('[aria-busy="true"]');
         var place = busy || box;
-        var url = box.getAttribute('hx-get');
+        // The notification panel keeps its address in data-src and is
+        // loaded by js/notifications.js, not by hx-get.
+        var url = box.getAttribute('hx-get') || box.getAttribute('data-src');
         var note = doc.createElement('div');
         note.className = 'p-4 text-sm text-charcoal flex flex-wrap items-center gap-3';
         note.setAttribute('role', 'status');
@@ -282,12 +287,10 @@
         note.appendChild(button);
         var old = place.querySelector('[data-lazy-failed]');
         if (old) { old.remove(); }
-        if (busy) {
-            busy.removeAttribute('aria-busy');
-            Array.prototype.forEach.call(busy.querySelectorAll('[class*="skeleton"]'), function (bone) {
-                bone.style.display = 'none';
-            });
-        }
+        if (busy) { busy.removeAttribute('aria-busy'); }
+        Array.prototype.forEach.call(place.querySelectorAll('[class*="skeleton"]'), function (bone) {
+            bone.style.display = 'none';
+        });
         place.appendChild(note);
     }
     ['htmx:sendError', 'htmx:timeout', 'htmx:responseError'].forEach(function (name) {
