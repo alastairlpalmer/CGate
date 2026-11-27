@@ -4,7 +4,7 @@
     "builder": "RAILPACK"
   },
   "deploy": {
-    "startCommand": "celery -A horse_management beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler",
+    "startCommand": "python manage.py wait_for_migrations && celery -A horse_management beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler",
     "restartPolicyType": "ALWAYS"
   }
 }
