@@ -243,4 +243,5 @@ class PhotoTriggerTests(PhotoPopupTestCase):
 
     def test_photo_component_script_is_loaded(self):
         response = self.client.get(reverse('horse_list'))
-        self.assertContains(response, 'js/photo_quick_add.js')
+        from core.tests._page_scripts import page_loads
+        self.assertTrue(page_loads(response.content.decode(), 'photo_quick_add.js'))

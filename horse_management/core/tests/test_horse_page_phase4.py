@@ -147,7 +147,8 @@ class ListTests(Base):
         self.assertEqual(response.context['next_horse'], self.d)
 
     def test_the_arrow_key_script_is_loaded(self):
-        self.assertContains(self.page(self.c), 'js/horse_step.js')
+        from core.tests._page_scripts import page_loads
+        self.assertTrue(page_loads(self.page(self.c).content.decode(), 'horse_step.js'))
 
 
 class HistoryTests(Base):

@@ -53,8 +53,7 @@
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->
-    {# Every page's scripts, joined in one file in the order of static/js/bundle.txt
-       (npm run build:js). One request instead of 27. #}
+    {# Every page's scripts, in one file, in the order of static/js/bundle.txt (npm run build:js). #}
     <script>window.YARDWAY_DRAFTS_OFFER = '{% static_v "js/drafts_offer.js" %}';</script>
     <script defer src="{% static_v 'js/app.bundle.js' %}"></script>
     <!-- HTMX -->

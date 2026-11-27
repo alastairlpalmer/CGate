@@ -71,8 +71,9 @@ class ServiceWorkerTests(TestCase):
     def test_the_scripts_every_page_loads_are_stored_too(self):
         config = worker_config(self.worker().content.decode())
         wanted = config['wanted']
-        self.assertGreater(len(wanted), 10)
-        for name in ('htmx.min.js', 'alpine.min.js', 'connection.js', 'app_install.js'):
+        # Every page's scripts are one file now (js/app.bundle.js): alpine,
+        # connection and app_install are inside it.
+        for name in ('htmx.min.js', 'app.bundle.js'):
             with self.subTest(script=name):
                 self.assertTrue(any(f'/js/{name}?v=' in url for url in wanted), wanted)
         # A file is in one list, not both.
@@ -111,7 +112,8 @@ class WorkerSwitchTests(TestCase):
     def test_a_page_names_the_worker_and_loads_the_script_that_registers_it(self):
         html = self.client.get(reverse('dashboard')).content.decode()
         self.assertIn('<meta name="app-worker" content="/sw.js">', html)
-        self.assertRegex(html, r'<script defer src="/static/js/app_install\.js\?v=[^"]+"></script>')
+        from core.tests._page_scripts import page_loads
+        self.assertTrue(page_loads(html, 'app_install.js'))
 
     @override_settings(APP_WORKER_ENABLED=False)
     def test_switched_off_a_page_names_no_worker(self):
@@ -441,7 +443,8 @@ class SharePdfTests(TestCase):
 
     def test_every_page_loads_the_script(self):
         html = self.client.get(reverse('dashboard')).content.decode()
-        self.assertRegex(html, r'<script defer src="/static/js/share_file\.js\?v=[^"]+"></script>')
+        from core.tests._page_scripts import page_loads
+        self.assertTrue(page_loads(html, 'share_file.js'))
 
 
 @override_settings(POSTHOG_API_KEY='phc_test', POSTHOG_SEND_USERNAMES=False)

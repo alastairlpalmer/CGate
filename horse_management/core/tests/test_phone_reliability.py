@@ -112,7 +112,7 @@ class AppVersionTests(TestCase):
         # version a page compares.
         self.client.force_login(make_user_with_access('yard', horses='view'))
         response = self.client.get(reverse('horse_list'))
-        self.assertContains(response, f'js/connection.js?v={app_version()}')
+        self.assertContains(response, f'js/app.bundle.js?v={app_version()}')
 
     def test_an_answer_that_is_not_a_page_has_no_version(self):
         response = self.client.get(reverse('web_health_check'))
@@ -141,9 +141,11 @@ class PhoneShellTests(TestCase):
         self.html = self.client.get(reverse('horse_list')).content.decode()
 
     def test_the_back_helper_loads_before_the_scripts_that_call_it(self):
-        order = [self.html.index(f'js/{name}.js') for name in (
-            'overlay_back', 'popup', 'notifications', 'lightbox', 'split_view', 'locations_mobile', 'alpine.min',
-        )]
+        from core.tests._page_scripts import bundle_list, page_loads
+        names = ('overlay_back', 'popup', 'notifications', 'lightbox', 'split_view', 'locations_mobile', 'alpine.min')
+        for name in names:
+            self.assertTrue(page_loads(self.html, f'{name}.js'), name)
+        order = [bundle_list().index(f'js/{name}.js') for name in names]
         self.assertEqual(order, sorted(order))
 
     def test_the_no_signal_mark_is_in_the_page_and_hidden(self):
