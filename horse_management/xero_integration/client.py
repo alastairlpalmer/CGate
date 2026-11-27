@@ -19,6 +19,10 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+
+class _RefreshTokenRejected(Exception):
+    """Xero said invalid_grant: the connection must be made again."""
+
 XERO_AUTHORIZE_URL = 'https://login.xero.com/identity/connect/authorize'
 XERO_TOKEN_URL = 'https://identity.xero.com/connect/token'
 XERO_CONNECTIONS_URL = 'https://api.xero.com/connections'
@@ -272,6 +276,17 @@ class XeroClient:
 
         from .models import XeroConnection
 
+        try:
+            self._refresh_locked(transaction, XeroConnection)
+        except _RefreshTokenRejected:
+            # Saved after the locked block has closed: the error raised in
+            # it rolled back a save made inside, so the page kept saying
+            # "Connected" for a connection that no longer works.
+            XeroConnection.objects.filter(pk=self.connection.pk).update(is_active=False)
+            self.connection.is_active = False
+            raise XeroTokenExpiredError('Refresh token expired. Please reconnect to Xero.')
+
+    def _refresh_locked(self, transaction, XeroConnection):
         with transaction.atomic():
             conn = XeroConnection.objects.select_for_update().get(
                 pk=self.connection.pk
@@ -313,12 +328,8 @@ class XeroClient:
                     and 'invalid_grant' in body
                 )
                 if is_invalid_grant:
-                    conn.is_active = False
-                    conn.save(update_fields=['is_active'])
                     self.connection = conn
-                    raise XeroTokenExpiredError(
-                        'Refresh token expired. Please reconnect to Xero.'
-                    )
+                    raise _RefreshTokenRejected()
                 logger.warning(
                     'Transient Xero token refresh failure: %s (%s)',
                     response.status_code, error_summary(response),
