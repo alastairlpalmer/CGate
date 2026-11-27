@@ -302,11 +302,15 @@
 
     // Keep Tab inside the open sheet (it is aria-modal): from the last
     // control Tab went on to the sidebar and page behind the scrim.
+    // The confirm dialog ("Discard your changes?") opens over the sheet:
+    // then Tab stays in the dialog. It went back into the sheet, so the
+    // dialog's buttons could not be reached with the keyboard.
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Tab') { return; }
         var s = store();
-        var panel = document.getElementById('popup-panel');
-        if (!s || !s.open || !panel) { return; }
+        var confirmOpen = window.Alpine && Alpine.store('confirm') && Alpine.store('confirm').open;
+        var panel = document.getElementById(confirmOpen ? 'confirm-panel' : 'popup-panel');
+        if (!panel || (!confirmOpen && (!s || !s.open))) { return; }
         var focusable = Array.prototype.filter.call(
             panel.querySelectorAll(
                 'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), ' +

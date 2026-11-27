@@ -22,7 +22,7 @@ action form) and must not be mistaken for the page behind them.
      x-transition:leave="transition ease-in duration-150"
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
-     @keydown.escape.window="$store.popup.open && $store.popup.close()">
+     @keydown.escape.window="if ($store.popup.open && !$store.confirm.open && !$event.defaultPrevented) { $event.preventDefault(); $store.popup.close() }">
 
     <!-- Scrim -->
     <div class="absolute inset-0 bg-charcoal/50" @click="$store.popup.close()"></div>
