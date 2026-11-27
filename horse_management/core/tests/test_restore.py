@@ -62,6 +62,21 @@ class DatabaseTargetGuardTests(TestCase):
         with self.assertRaises(restore.RestoreNotPermitted):
             restore.target_database_url()
 
+    @override_settings(
+        RESTORE_TEST_DATABASE_URL='postgresql://postgres.scratchref:x@aws-1-eu-west-1.pooler.supabase.com:5432/postgres'
+    )
+    def test_accepts_a_second_supabase_project_on_the_same_pooler(self):
+        """Pre-launch review: every project shares the pooler host and the
+        database name, so a scratch project looked like production."""
+        self.assertIn('scratchref', restore.target_database_url())
+
+    @override_settings(RESTORE_TEST_DATABASE_URL='postgresql://postgres:x@db.abc.supabase.co:5432/postgres')
+    def test_refuses_production_under_its_direct_host(self):
+        """Pre-launch review: the direct host db.<ref>.supabase.co is the
+        same database as the pooler address with user postgres.<ref>."""
+        with self.assertRaises(restore.RestoreNotPermitted):
+            restore.target_database_url()
+
     @override_settings(RESTORE_TEST_DATABASE_URL=SCRATCH)
     def test_accepts_a_genuinely_separate_database(self):
         self.assertEqual(restore.target_database_url(), SCRATCH)
