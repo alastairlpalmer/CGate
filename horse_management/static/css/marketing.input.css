@@ -85,6 +85,14 @@
 .mk-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 9999px; background: #3D5A63; border: 3px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); cursor: pointer; }
 .mk-range:focus-visible { outline: 3px solid rgb(61 90 99 / 0.4); outline-offset: 4px; }
 
+/* "See it working" playing by itself (js/marketing.js). */
+@keyframes mk-tap { 0% { box-shadow: 0 0 0 0 rgb(160 82 45 / 0.55); } 100% { box-shadow: 0 0 0 10px rgb(160 82 45 / 0); } }
+.mk-tap { animation: mk-tap 0.7s ease-out 2; }
+.mk-new { animation: mk-in 0.6s cubic-bezier(.2,.7,.2,1); }
+.mk-row-in { animation: mk-in 0.45s cubic-bezier(.2,.7,.2,1) both; }
+.mk-lit { box-shadow: inset 0 0 0 2px rgb(61 90 99 / 0.45); background: rgb(245 242 234 / 0.8); }
+.mk-mover { transition: transform 1.8s cubic-bezier(.4,0,.2,1); }
+
 @media (prefers-reduced-motion: reduce) {
     .mk-fade-in, .mk-card, .mk-fill { animation: none; opacity: 1; }
     .mk-draw { animation: none; stroke-dashoffset: 0; }

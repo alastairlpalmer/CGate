@@ -27,13 +27,15 @@ the "go to" links; without it the Dashboard shows.
             </div>
         </div>
 
-        <div class="mk-reveal relative mx-auto mt-6 max-w-6xl" style="--d:200ms">
+        <div class="mk-reveal relative mx-auto mt-6 max-w-6xl" style="--d:200ms" data-demo-window>
             <div class="absolute -inset-x-6 -bottom-6 top-10 rounded-[2rem] bg-forest/10 blur-2xl" aria-hidden="true"></div>
             <div class="relative overflow-hidden rounded-2xl border border-sand bg-white text-[13px] text-charcoal shadow-2xl shadow-forest/15">
-                <div class="flex items-center gap-2 border-b border-sand bg-white px-4 py-2.5" aria-hidden="true">
-                    <span class="h-2.5 w-2.5 rounded-full bg-sand"></span><span class="h-2.5 w-2.5 rounded-full bg-sand"></span><span class="h-2.5 w-2.5 rounded-full bg-sand"></span>
+                <div class="flex items-center gap-2 border-b border-sand bg-white px-4 py-2.5">
+                    <span class="h-2.5 w-2.5 rounded-full bg-sand" aria-hidden="true"></span><span class="h-2.5 w-2.5 rounded-full bg-sand" aria-hidden="true"></span><span class="h-2.5 w-2.5 rounded-full bg-sand" aria-hidden="true"></span>
                     <span class="ml-3 hidden rounded-md bg-parchment px-3 py-0.5 text-[11px] text-sage sm:block">Cgate · Example yard</span>
+                    <button type="button" data-autoplay-toggle hidden aria-pressed="false" class="ml-auto inline-flex items-center gap-1.5 rounded-full border border-sand px-2.5 py-0.5 text-[11px] font-semibold text-sage hover:text-forest"><span data-autoplay-label>Pause</span></button>
                 </div>
+                <div class="h-0.5 bg-sand/60" aria-hidden="true"><div class="h-full w-0 bg-saddle" data-demo-progress></div></div>
                 <div class="grid md:grid-cols-[176px_1fr]">
                     {# The app's side bar #}
                     <nav class="hidden flex-col bg-forest p-3 text-white md:flex" aria-hidden="true">
@@ -59,7 +61,7 @@ the "go to" links; without it the Dashboard shows.
                             <p class="text-xs text-sage">Monday 23 November</p>
                             <div class="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
                                 {% for label, value, note in showcase_stats %}
-                                <div class="rounded-xl border border-sand bg-white px-3.5 py-3"><p class="text-[11px] text-sage">{{ label }}</p><p class="font-heading text-2xl text-charcoal">{{ value }}</p><p class="text-[11px] text-sage">{{ note }}</p></div>
+                                <div class="rounded-xl border border-sand bg-white px-3.5 py-3"><p class="text-[11px] text-sage">{{ label }}</p><p class="font-heading text-2xl text-charcoal" data-count>{{ value }}</p><p class="text-[11px] text-sage">{{ note }}</p></div>
                                 {% endfor %}
                             </div>
                             <div class="mt-3 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
@@ -71,7 +73,7 @@ the "go to" links; without it the Dashboard shows.
                                         {% for what, who, action, button in items %}
                                         <div class="mt-1.5 flex items-center justify-between gap-3">
                                             <p class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-forest"></span><span><span class="font-semibold">{{ what }}</span><br><span class="text-sage">{{ who }}</span></span></p>
-                                            {% if button %}<span class="shrink-0 rounded-md bg-saddle px-2.5 py-1 text-[11px] font-semibold text-white">{{ action }}</span>{% else %}<span class="shrink-0 text-[11px] font-semibold text-forest">{{ action }}</span>{% endif %}
+                                            {% if button %}<span class="shrink-0 rounded-md bg-saddle px-2.5 py-1 text-[11px] font-semibold text-white transition" {% if forloop.parentloop.counter == 2 %}data-demo="record" data-text="{{ action }}"{% endif %}>{{ action }}</span>{% else %}<span class="shrink-0 text-[11px] font-semibold text-forest">{{ action }}</span>{% endif %}
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -80,6 +82,10 @@ the "go to" links; without it the Dashboard shows.
                                 <div class="overflow-hidden rounded-xl border border-sand bg-white">
                                     <div class="border-b border-sand bg-parchment/50 px-4 py-2.5"><p class="font-heading font-semibold text-forest">Timeline</p></div>
                                     <div class="space-y-3 px-4 py-3">
+                                        <div data-demo="timeline-new" hidden class="mk-new space-y-2">
+                                            <p class="font-mono text-[10px] uppercase tracking-wider text-saddle">Just now</p>
+                                            <div class="flex flex-wrap items-center gap-1.5"><span class="inline-flex items-center gap-1 rounded-full border border-sand px-2 py-0.5 text-[11px]"><span class="h-2 w-2 rounded-full" style="background:#8C8F94"></span>Duke</span><span class="inline-flex items-center gap-1 rounded-full border border-sand px-2 py-0.5 text-[11px]"><span class="h-2 w-2 rounded-full" style="background:#6B3A1F"></span>Pip</span><span class="inline-flex items-center gap-1 rounded-full border border-sand px-2 py-0.5 text-[11px]"><span class="h-2 w-2 rounded-full" style="background:#2A2622"></span>Otis</span><span class="text-xs">Farrier · 3 horses</span></div>
+                                        </div>
                                         {% for day, entries in showcase_timeline %}
                                         <p class="font-mono text-[10px] uppercase tracking-wider text-sage">{{ day }}</p>
                                         {% for names, text in entries %}
@@ -140,6 +146,7 @@ the "go to" links; without it the Dashboard shows.
                                         <div class="px-4 py-3">
                                             <div class="flex flex-wrap gap-1.5 text-[11px]"><span class="rounded-full border border-forest px-2 py-0.5">All {{ horse.timeline|length }}</span><span class="rounded-full border border-sand px-2 py-0.5">Health</span><span class="rounded-full border border-sand px-2 py-0.5">Moves</span></div>
                                             <ol class="mt-3 space-y-2 border-l-2 border-sand pl-3">
+                                                <li data-demo="new-{{ horse.key }}" hidden class="mk-new rounded-lg border border-meadow/40 bg-meadow/5 px-3 py-2"><p class="flex justify-between gap-3"><span class="font-semibold">Weight recorded: {{ horse.weight }}</span><span class="shrink-0 text-[11px] text-meadow">Today</span></p></li>
                                                 {% for event, when in horse.timeline %}<li class="rounded-lg border border-sand px-3 py-2"><p class="flex justify-between gap-3"><span class="font-semibold">{{ event }}</span><span class="shrink-0 text-[11px] text-sage">{{ when }}</span></p></li>{% endfor %}
                                             </ol>
                                         </div>
@@ -179,6 +186,7 @@ the "go to" links; without it the Dashboard shows.
                                             {% for x, y in field.dots %}<circle cx="{{ x }}" cy="{{ y }}" r="6" fill="#3D5A63" stroke="#fff" stroke-width="2"/>{% endfor %}
                                         </g>
                                         {% endfor %}
+                                        <circle data-demo="mover" cx="165" cy="76" r="6" fill="#A0522D" stroke="#fff" stroke-width="2" class="mk-mover" aria-hidden="true"/>
                                         <path d="M30 238 206 228 210 300 36 304Z" fill="#E6E1D1" stroke="#fff" stroke-width="3"/>
                                         <rect x="50" y="248" width="66" height="34" rx="3" fill="#A0522D" opacity=".85"/><text x="83" y="270" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">Barn A</text>
                                         <rect x="124" y="248" width="66" height="34" rx="3" fill="#A0522D" opacity=".7"/><text x="157" y="270" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">Barn B</text>
@@ -205,15 +213,15 @@ the "go to" links; without it the Dashboard shows.
                             <div data-view="list">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="font-heading text-xl font-semibold text-charcoal">Invoices</p>
-                                    <div class="flex gap-1.5 text-[11px]"><span class="hidden rounded-md border border-sand bg-white px-2.5 py-1 sm:inline">Aged debtors</span><span class="rounded-md border border-sand bg-white px-2.5 py-1">Generate Monthly</span><span class="rounded-md bg-saddle px-2.5 py-1 font-semibold text-white">+ Create Invoice</span></div>
+                                    <div class="flex gap-1.5 text-[11px]"><span class="hidden rounded-md border border-sand bg-white px-2.5 py-1 sm:inline">Aged debtors</span><span class="rounded-md border border-sand bg-white px-2.5 py-1" data-demo="generate">Generate Monthly</span><span class="rounded-md bg-saddle px-2.5 py-1 font-semibold text-white">+ Create Invoice</span></div>
                                 </div>
                                 <div class="mt-3 rounded-xl border border-sand bg-white px-4 py-2 text-xs">{{ showcase_invoices|length }} invoices · Invoiced: <strong>£1,661.50</strong> · <span class="text-error-red">Outstanding: <strong>£774.00</strong></span></div>
                                 <div class="mt-2 overflow-hidden rounded-xl border border-sand bg-white">
                                     <div class="hidden grid-cols-[1fr_1.2fr_1fr_0.8fr_0.7fr] border-b border-sand bg-[#EEF1F0] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-sage sm:grid"><span>Invoice</span><span>Owner</span><span>Period</span><span class="text-right">Total</span><span class="text-right">Status</span></div>
                                     {% for inv in showcase_invoices %}
-                                    <button type="button" data-go="{{ inv.key }}" class="grid w-full grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-sand/70 px-4 py-2.5 text-left transition last:border-0 hover:bg-parchment/60 sm:grid-cols-[1fr_1.2fr_1fr_0.8fr_0.7fr]">
+                                    <button type="button" data-go="{{ inv.key }}" data-demo-row class="grid w-full grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-sand/70 px-4 py-2.5 text-left transition last:border-0 hover:bg-parchment/60 sm:grid-cols-[1fr_1.2fr_1fr_0.8fr_0.7fr]">
                                         <span class="hidden sm:block">{{ inv.number }}</span><span>{{ inv.owner }}</span><span class="hidden text-sage sm:block">1 Nov – 30 Nov 2026</span><span class="text-right font-semibold">{{ inv.total }}</span>
-                                        <span class="text-right">{% include "marketing/_status.html" with status=inv.status %}</span>
+                                        <span class="text-right">{% if inv.status == 'Draft' %}<span data-demo="draft-badge">{% include "marketing/_status.html" with status=inv.status %}</span><span data-demo="sent-badge" hidden>{% include "marketing/_status.html" with status='Sent' %}</span>{% else %}{% include "marketing/_status.html" with status=inv.status %}{% endif %}</span>
                                     </button>
                                     {% endfor %}
                                 </div>
@@ -224,10 +232,10 @@ the "go to" links; without it the Dashboard shows.
                                 <button type="button" data-go="list" class="text-xs text-sage hover:text-forest">&lsaquo; All invoices</button>
                                 <div class="mt-1 flex flex-wrap items-start justify-between gap-2">
                                     <div><p class="font-heading text-xl font-semibold text-charcoal">Invoice {{ inv.number }}</p><p class="text-xs text-sage">{{ inv.owner }} · 1 Nov – 30 Nov 2026</p></div>
-                                    <div class="flex gap-1.5 text-[11px]"><span class="rounded-md border border-sand bg-white px-2.5 py-1">Download PDF</span>{% if inv.status == 'Draft' %}<span class="rounded-md bg-saddle px-2.5 py-1 font-semibold text-white">Send Invoice</span>{% endif %}</div>
+                                    <div class="flex gap-1.5 text-[11px]"><span class="rounded-md border border-sand bg-white px-2.5 py-1">Download PDF</span>{% if inv.status == 'Draft' %}<span class="rounded-md bg-saddle px-2.5 py-1 font-semibold text-white" data-demo="send">Send Invoice</span>{% endif %}</div>
                                 </div>
                                 <div class="mt-3 grid gap-2.5 sm:grid-cols-3">
-                                    <div class="rounded-xl border border-sand bg-white"><p class="border-b border-sand bg-parchment/50 px-3 py-1.5 font-heading font-semibold text-forest">Details</p><div class="space-y-1 px-3 py-2 text-xs"><p class="text-sage">Status</p>{% include "marketing/_status.html" with status=inv.status %}{% if inv.xero %}<p class="pt-1 text-[11px] text-meadow">In Xero &#10003;</p>{% endif %}</div></div>
+                                    <div class="rounded-xl border border-sand bg-white"><p class="border-b border-sand bg-parchment/50 px-3 py-1.5 font-heading font-semibold text-forest">Details</p><div class="space-y-1 px-3 py-2 text-xs"><p class="text-sage">Status</p>{% if inv.status == 'Draft' %}<span data-demo="draft-badge">{% include "marketing/_status.html" with status=inv.status %}</span><span data-demo="sent-badge" hidden>{% include "marketing/_status.html" with status='Sent' %}</span>{% else %}{% include "marketing/_status.html" with status=inv.status %}{% endif %}{% if inv.xero %}<p class="pt-1 text-[11px] text-meadow">In Xero &#10003;</p>{% endif %}</div></div>
                                     <div class="rounded-xl border border-sand bg-white"><p class="border-b border-sand bg-parchment/50 px-3 py-1.5 font-heading font-semibold text-forest">Bill To</p><div class="px-3 py-2 text-xs"><p>{{ inv.owner }}</p><p class="text-sage">{{ inv.email }}</p></div></div>
                                     <div class="rounded-xl border border-sand bg-white"><p class="border-b border-sand bg-parchment/50 px-3 py-1.5 font-heading font-semibold text-forest">Balance</p><div class="px-3 py-2 text-xs"><p class="text-sage">Amount due</p><p class="font-heading text-xl">{{ inv.due }}</p><p class="flex justify-between text-sage"><span>Paid to date</span><span>{{ inv.paid }}</span></p></div></div>
                                 </div>
