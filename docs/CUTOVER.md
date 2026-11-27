@@ -11,20 +11,23 @@ One Railway project, four services, all built from this repo:
 | Service  | What it runs | Config file (set in dashboard) |
 |----------|--------------|--------------------------------|
 | `web`    | gunicorn + WhiteNoise, migrate on deploy | `/horse_management/railway/web.json` |
-| `worker` | `celery -A horse_management worker` | `/horse_management/railway/worker.json` |
-| `beat`   | `celery -A horse_management beat` (django-celery-beat DB scheduler) | `/horse_management/railway/beat.json` |
+| `worker` | `manage.py wait_for_migrations`, then `celery -A horse_management worker` | `/horse_management/railway/worker.json` |
+| `beat`   | `manage.py wait_for_migrations`, then `celery -A horse_management beat` (django-celery-beat DB scheduler) | `/horse_management/railway/beat.json` |
 | `Redis`  | Railway Redis plugin — Celery broker | n/a |
 
-Plus a **volume** mounted on `web` at `/data` for uploaded media (horse
-photos, business logo, receipts). The Celery tasks never read media files, so
+Plus, until uploads move to a bucket (GO_LIVE_CHECKLIST.md, 2.4), a
+**volume** mounted on `web` at `/data` for uploaded media (horse photos,
+business logo, receipts). The Celery tasks never read media files, so
 only `web` needs the volume (Railway volumes attach to a single service).
 
 The build is defined in `horse_management/railpack.json`: Python 3.11 +
 Node 22, `pip install -r requirements.txt`, `npm run build:css` (Tailwind),
 `collectstatic`. Migrations run in the web service's **pre-deploy command**
-(`horse_management/railway/web.json`), *not* at import time — the `call_command('migrate')`
-hack in the project-level `wsgi.py` is now gated behind the `VERCEL` env var
-and never fires on Railway.
+(`horse_management/railway/web.json`), *not* at import time. The
+`call_command('migrate')` in the project-level `wsgi.py` is removed: on
+Vercel it let a preview build change the production schema. The `worker`
+and `beat` services wait until that migrate is done
+(`manage.py wait_for_migrations`) before their new code starts.
 
 ## 1. Create the project and services
 

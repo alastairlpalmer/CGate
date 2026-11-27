@@ -53,8 +53,9 @@ class DisplaySizeTests(TestCase):
         html = self.client.get(reverse('dashboard')).content.decode()
         return re.search(r'<html lang="en" data-ui-size="([a-z]+)"', html).group(1)
 
-    def test_compact_is_the_default(self):
-        self.assertEqual(self._size(), 'compact')
+    def test_medium_is_the_default(self):
+        # Pre-launch review: Compact (9px small text) was too small.
+        self.assertEqual(self._size(), 'medium')
 
     def test_profile_choice_applies_at_once(self):
         self.client.post(reverse('profile'), {
@@ -70,11 +71,11 @@ class DisplaySizeTests(TestCase):
         self.client.force_login(self.user)
         self.assertEqual(self._size(), 'medium')
 
-    def test_an_unknown_value_falls_back_to_compact(self):
+    def test_an_unknown_value_falls_back_to_medium(self):
         session = self.client.session
         session['_display_size'] = 'gigantic'
         session.save()
-        self.assertEqual(self._size(), 'compact')
+        self.assertEqual(self._size(), 'medium')
 
 
 class HorseSubtitleTests(TestCase):
