@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from core.permissions import feature_required
 from django.db.models import Count, Q, Sum
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import Coalesce, TruncMonth
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -91,7 +91,9 @@ def _finances_inner(request):
         ExtraCharge.objects.filter(date__gte=twelve_months_ago, feed_out__isnull=True)
         .annotate(month=TruncMonth('date'))
         .values('month')
-        .annotate(total=Sum('amount'))
+        # What the yard paid: cost_amount when a margin was added (the
+        # amount then includes the margin, which is income, not cost).
+        .annotate(total=Sum(Coalesce('cost_amount', 'amount')))
         .order_by()
     )
     yard_qs = (
