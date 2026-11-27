@@ -1,0 +1,4 @@
+<a href="{% url 'marketing:features' %}" class="{% if menu %}block py-2{% endif %} hover:underline underline-offset-4" {% if page == 'features' %}aria-current="page"{% endif %}>Features</a>
+<a href="{% url 'marketing:pricing' %}" class="{% if menu %}block py-2{% endif %} hover:underline underline-offset-4" {% if page == 'pricing' %}aria-current="page"{% endif %}>Pricing</a>
+<a href="{% url 'marketing:about' %}" class="{% if menu %}block py-2{% endif %} hover:underline underline-offset-4" {% if page == 'about' %}aria-current="page"{% endif %}>About</a>
+<a href="{% url 'marketing:contact' %}" class="{% if menu %}block py-2{% endif %} hover:underline underline-offset-4" {% if page == 'contact' %}aria-current="page"{% endif %}>Contact</a>

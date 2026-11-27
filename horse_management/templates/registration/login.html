@@ -79,6 +79,12 @@
         <div role="main" class="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-16 xl:px-24 bg-parchment">
             <div class="mx-auto w-full max-w-sm">
 
+                {% if marketing_site %}
+                <a href="/" class="mb-8 inline-flex items-center gap-1 text-sm font-medium text-sage hover:text-forest hover:underline">
+                    <span aria-hidden="true">&larr;</span> Back to Cgate home
+                </a>
+                {% endif %}
+
                 <!-- Mobile logo -->
                 <div class="flex items-center gap-2 mb-10 lg:hidden">
                     <svg class="h-8 w-8 text-forest" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">

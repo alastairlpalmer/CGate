@@ -282,8 +282,9 @@ class PageTitleTests(SimpleTestCase):
         from django.conf import settings
         base = Path(settings.BASE_DIR) / 'templates'
         # Pages with no sidebar keep their own heading: sign-in, the public
-        # privacy page, the farrier's phone page and C-vet.
-        apart = ('registration', 'account/_auth_layout.html', 'core/privacy.html', 'farrier', 'cvet', 'emails')
+        # privacy page, the farrier's phone page, C-vet and the public
+        # marketing pages.
+        apart = ('registration', 'account/_auth_layout.html', 'core/privacy.html', 'farrier', 'cvet', 'emails', 'marketing')
         large = re.compile(r'<h1[^>]*class="[^"]*\btext-(2xl|3xl|4xl|\[2[1-9]px\]|\[[3-9]\dpx\])')
         offenders = []
         for path in sorted(base.rglob('*.html')):

@@ -6,12 +6,15 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path
 from django.views.generic import RedirectView
 
+from marketing import views as marketing_views
+
 from . import views
 from .views import exports as export_views
 
 urlpatterns = [
     # Dashboard
-    path('', views.dashboard, name='dashboard'),
+    # The dashboard for a signed-in user; Home for a visitor (marketing).
+    path('', marketing_views.root, name='dashboard'),
     path('_partials/dashboard/money/', views.dashboard_money, name='dashboard_money'),
     path('_partials/dashboard/calendar/', views.dashboard_calendar, name='dashboard_calendar'),
     path('_partials/dashboard/activity/', views.dashboard_activity, name='dashboard_activity'),
