@@ -40,9 +40,18 @@ FEATURES = [
         'key': 'phone', 'title': 'Works on a phone in the yard',
         'line': 'Add Cgate to the home screen. Record a job where it happens.',
         'points': [
-            'Large buttons, made for one hand and cold fingers',
+            'Large buttons, made for use with one hand',
             'Quick find for any horse or owner',
             'A login for each member of staff, with the access you choose',
+        ],
+    },
+    {
+        'key': 'security', 'title': 'Security and backups',
+        'line': 'Your data is safe, and it stays yours.',
+        'points': [
+            'Two-step sign-in',
+            'Daily backups',
+            'Export your horses and owners at any time',
         ],
     },
     {
@@ -55,7 +64,7 @@ FEATURES = [
         ],
     },
     {
-        'key': 'xero', 'title': 'Xero',
+        'key': 'xero', 'title': 'Xero accounting',
         'line': 'Invoices go to Xero. Payments come back and are matched.',
         'points': [
             'No typing the same invoice twice',
@@ -103,18 +112,12 @@ FEATURES = [
             'Health records go straight onto the horse in Cgate',
         ],
     },
-    {
-        'key': 'security', 'title': 'Security and backups',
-        'line': 'Your data is safe, and it stays yours.',
-        'points': [
-            'Two-step sign-in',
-            'Daily backups',
-            'Export your horses and owners at any time',
-        ],
-    },
 ]
 
 _BY_KEY = {feature['key']: feature for feature in FEATURES}
+
+# The six cards on the Home page.
+HOME_FEATURES = [_BY_KEY[key] for key in ('horses', 'health', 'invoicing', 'xero', 'phone', 'farrier')]
 
 PLANS = [
     {
@@ -131,7 +134,7 @@ PLANS = [
     },
     {
         'key': 'complete', 'name': 'Complete', 'price': Decimal('10'),
-        'for': 'For competition yards, studs and vets.',
+        'for': 'For competition yards and studs.',
         'features': ['training', 'breeding', 'cvet'],
         'includes': 'Everything in Professional, plus:',
     },

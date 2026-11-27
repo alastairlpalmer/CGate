@@ -55,6 +55,8 @@ class SiteOnTests(TestCase):
             self.assertNotIn('alpine', html.lower(), url)
             self.assertIn('js/marketing.js', html, url)
             self.assertEqual(html.count('<h1'), 1, url)
+            self.assertIn('property="og:title"', html, url)
+            self.assertIn(f'rel="canonical" href="http://testserver{url}"', html, url)
 
     def test_a_signed_in_user_on_a_marketing_page_is_offered_the_app(self):
         self.client.force_login(make_user_with_access('yard2', dashboard='full'))

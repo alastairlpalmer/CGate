@@ -1,14 +1,15 @@
 {% extends "marketing/base.html" %}
 {% block title %}Contact - Cgate{% endblock %}
+{% block og_title %}Contact - Cgate{% endblock %}
 {% block description %}Book a demo of Cgate, or ask a question about the app or its pricing.{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with title="Get in touch." intro="Book a demo, or ask us a question. We show you Cgate with your own horses and owners." %}
+{% include "marketing/_page_intro.html" with title="Get in touch" intro="Book a demo, or ask us a question. We show you Cgate with your own horses and owners." %}
 
 <section class="bg-white" aria-label="Contact form">
     <div class="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-20">
         {% if sent %}
         <div class="rounded-2xl border border-meadow bg-parchment p-8" role="status">
-            <h2 class="font-heading text-2xl font-semibold text-forest">Thank you. We have your message.</h2>
+            <h2 class="font-heading text-2xl font-semibold text-forest">Thank you, we have your message</h2>
             <p class="mt-2 text-lg text-sage">We reply by email.</p>
             <a href="/" class="mt-6 inline-flex font-semibold text-forest hover:underline">Back to the home page</a>
         </div>

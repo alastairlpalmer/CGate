@@ -10,7 +10,7 @@
     </svg>
     <div class="relative mx-auto grid w-full max-w-7xl gap-8 px-4 pb-16 pt-32 sm:px-6 lg:grid-cols-2 lg:items-end lg:px-8 lg:pb-24">
         <div>
-            <h1 id="hero-title" class="font-heading text-5xl font-normal leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">Your yard,<br>in one place.</h1>
+            <h1 id="hero-title" class="font-heading text-5xl font-normal leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">Your yard,<br>in one place</h1>
             <div class="mt-8 flex flex-wrap gap-3">
                 <a href="{% url 'marketing:contact' %}" class="inline-flex h-12 items-center rounded-full bg-saddle px-6 font-semibold text-white hover:bg-saddle-dark">Book a demo</a>
                 <a href="{% url 'marketing:features' %}" class="inline-flex h-12 items-center rounded-full border border-white/70 px-6 font-semibold text-white hover:bg-white/10">See features</a>
@@ -23,7 +23,7 @@
 {# Taranis-style: big headline at left, a linked list with thin lines at right. #}
 <section class="bg-white" aria-labelledby="what-title">
     <div class="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
-        <h2 id="what-title" class="font-heading text-4xl font-normal leading-tight tracking-tight text-forest sm:text-5xl">Everything a livery yard needs, and nothing it does not.</h2>
+        <h2 id="what-title" class="font-heading text-4xl font-normal leading-tight tracking-tight text-forest sm:text-5xl">One app for the whole yard</h2>
         <ul class="border-t border-sand">
             <li class="border-b border-sand"><a href="{% url 'marketing:features' %}#yard" class="flex items-baseline justify-between gap-4 py-6 hover:text-saddle"><span class="font-heading text-2xl text-forest">Horses and owners</span><span class="text-2xl text-sage" aria-hidden="true">&rarr;</span></a></li>
             <li class="border-b border-sand"><a href="{% url 'marketing:features' %}#invoicing" class="flex items-baseline justify-between gap-4 py-6 hover:text-saddle"><span class="font-heading text-2xl text-forest">Invoicing and Xero</span><span class="text-2xl text-sage" aria-hidden="true">&rarr;</span></a></li>
@@ -35,7 +35,7 @@
 
 <section class="bg-parchment" aria-labelledby="features-title">
     <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-        <h2 id="features-title" class="max-w-2xl font-heading text-4xl font-normal leading-tight tracking-tight text-forest sm:text-5xl">Less paperwork. Fewer missed dates. Invoices that add up.</h2>
+        <h2 id="features-title" class="max-w-2xl font-heading text-4xl font-normal leading-tight tracking-tight text-forest sm:text-5xl">Less paperwork, fewer missed dates, invoices that add up</h2>
         <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {% for feature in features %}
             <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-sand hover:ring-forest">
@@ -55,7 +55,7 @@
             <li class="border-t-2 border-forest pt-6">
                 <span class="font-heading text-sm font-semibold text-saddle">Step 1</span>
                 <h3 class="mt-2 font-heading text-2xl text-forest">Add your horses and owners</h3>
-                <p class="mt-2 text-sage">We help you bring them in from your spreadsheets.</p>
+                <p class="mt-2 text-sage">Set up your horses, owners, stables and livery rates.</p>
             </li>
             <li class="border-t-2 border-forest pt-6">
                 <span class="font-heading text-sm font-semibold text-saddle">Step 2</span>

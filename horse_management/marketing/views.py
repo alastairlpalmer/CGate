@@ -53,7 +53,7 @@ def root(request):
         response = dashboard(request)
     else:
         response = render(request, 'marketing/home.html', {
-            'page': 'home', 'features': content.FEATURES[:6],
+            'page': 'home', 'features': content.HOME_FEATURES,
         })
     # The same address gives two pages, chosen by the session cookie.
     patch_vary_headers(response, ('Cookie',))
