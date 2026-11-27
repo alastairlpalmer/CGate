@@ -200,12 +200,14 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hide(); } });
 })();
 
-// "See it working" (marketing/_showcase.html): tabs light the matching
-// side-bar item; [data-go] links switch the view inside a tab (a list to
-// a horse or an invoice, map to cards); the map picks a paddock. It also
-// plays by itself: each tab shows a few seconds of use, then the next tab.
-// It stops for good when the visitor clicks, taps or types in it, pauses
-// while off screen, has a Pause button, and never plays with less motion.
+// "See it working" (marketing/_showcase.html). Tabs light the matching
+// side-bar item; [data-go] switches the view inside a tab (a list to a
+// horse, an owner, an invoice; map to cards); [data-sub] switches a horse
+// page's own tabs; the map picks a paddock.
+// It also plays by itself: a pointer moves and clicks through a few
+// seconds of real use in each tab, then the next tab. The first click, tap
+// or key press in it stops that for good. It pauses off screen, has a
+// Pause button, and never plays with less motion asked for.
 (function () {
     'use strict';
     var box = document.querySelector('[data-showcase]');
@@ -214,8 +216,8 @@
     var navs = box.querySelectorAll('[data-nav]');
     var fields = box.querySelectorAll('[data-pick-field]');
 
-    function $(sel) { return box.querySelector(sel); }
-    function $$(sel) { return Array.prototype.slice.call(box.querySelectorAll(sel)); }
+    function one(sel) { return box.querySelector(sel); }
+    function all(sel) { return Array.prototype.slice.call(box.querySelectorAll(sel)); }
 
     function select(tab, focus) {
         var key = tab.getAttribute('data-tab');
@@ -223,21 +225,29 @@
             var on = t === tab;
             t.setAttribute('aria-selected', on ? 'true' : 'false');
             t.tabIndex = on ? 0 : -1;
-            $('[data-panel="' + t.getAttribute('data-tab') + '"]').hidden = !on;
+            one('[data-panel="' + t.getAttribute('data-tab') + '"]').hidden = !on;
         });
         for (var n = 0; n < navs.length; n++) { navs[n].classList.toggle('is-on', navs[n].getAttribute('data-nav') === key); }
         if (focus) { tab.focus(); }
     }
     function go(panel, target, link) {
-        $$('[data-panel="' + panel + '"] [data-view]').forEach(function (v) { v.hidden = v.getAttribute('data-view') !== target; });
+        all('[data-panel="' + panel + '"] [data-view]').forEach(function (v) { v.hidden = v.getAttribute('data-view') !== target; });
         var group = link && link.closest('[role="group"]');
         if (group) {
             group.querySelectorAll('[data-go]').forEach(function (p) { p.setAttribute('aria-pressed', p === link ? 'true' : 'false'); });
         }
     }
+    function sub(view, name) {
+        view.querySelectorAll('[data-sub]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-sub') === name ? 'true' : 'false'); });
+        view.querySelectorAll('[data-subview]').forEach(function (s) { s.hidden = s.getAttribute('data-subview') !== name; });
+    }
+    function send(view, sent) {
+        view.querySelectorAll('[data-demo="draft-badge"]').forEach(function (b) { b.hidden = sent; });
+        view.querySelectorAll('[data-demo="sent-badge"]').forEach(function (b) { b.hidden = !sent; });
+    }
     function pick(key) {
         for (var i = 0; i < fields.length; i++) { fields[i].setAttribute('aria-pressed', fields[i].getAttribute('data-pick-field') === key ? 'true' : 'false'); }
-        $$('[data-field-info]').forEach(function (info) { info.hidden = info.getAttribute('data-field-info') !== key; });
+        all('[data-field-info]').forEach(function (info) { info.hidden = info.getAttribute('data-field-info') !== key; });
     }
 
     tabs.forEach(function (tab) {
@@ -250,8 +260,11 @@
     });
     box.addEventListener('click', function (e) {
         var link = e.target.closest('[data-go]');
-        if (!link) { return; }
-        go(link.closest('[data-panel]').getAttribute('data-panel'), link.getAttribute('data-go'), link);
+        if (link) { go(link.closest('[data-panel]').getAttribute('data-panel'), link.getAttribute('data-go'), link); return; }
+        var tabButton = e.target.closest('[data-sub]');
+        if (tabButton) { sub(tabButton.closest('[data-view]'), tabButton.getAttribute('data-sub')); return; }
+        var sendButton = e.target.closest('[data-send]');
+        if (sendButton) { send(sendButton.closest('[data-view]'), true); }
     });
     for (var f = 0; f < fields.length; f++) {
         fields[f].addEventListener('click', function () { pick(this.getAttribute('data-pick-field')); });
@@ -263,10 +276,13 @@
 
     // ── Playing by itself ──
     var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var toggle = $('[data-autoplay-toggle]');
-    var label = $('[data-autoplay-label]');
-    var bar = $('[data-demo-progress]');
-    var windowEl = $('[data-demo-window]');
+    var toggle = one('[data-autoplay-toggle]');
+    var label = one('[data-autoplay-label]');
+    var bar = one('[data-demo-progress]');
+    var windowEl = one('[data-demo-window]');
+    var area = one('[data-cursor-area]');
+    var cursor = one('[data-cursor]');
+    var ripple = one('[data-cursor-ripple]');
     var playing = false;
     var stopped = false;
     var onScreen = false;
@@ -276,8 +292,23 @@
     function later(ms, fn) { timers.push(setTimeout(fn, ms)); }
     function clear() { timers.forEach(clearTimeout); timers = []; }
     function tap(el) { if (!el) { return; } el.classList.remove('mk-tap'); void el.offsetWidth; el.classList.add('mk-tap'); }
-    function show(el) { if (el) { el.hidden = false; } }
-    function hide(el) { if (el) { el.hidden = true; } }
+    function seen(el) { return el && el.getClientRects().length > 0; }
+
+    // Move the pointer to an element, click it (a ripple), then do the action.
+    function clickOn(el, action) {
+        if (!seen(el) || !cursor || !area) { if (action) { action(); } return; }
+        var a = area.getBoundingClientRect();
+        var r = el.getBoundingClientRect();
+        var x = r.left - a.left + Math.min(r.width / 2, 40);
+        var y = r.top - a.top + r.height / 2;
+        cursor.classList.add('is-on');
+        cursor.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        later(750, function () {
+            if (ripple) { ripple.classList.remove('is-click'); void ripple.offsetWidth; ripple.classList.add('is-click'); }
+            tap(el);
+            later(220, function () { if (action) { action(); } });
+        });
+    }
 
     function countUp(el) {
         var text = el.getAttribute('data-final') || el.textContent;
@@ -298,54 +329,61 @@
     // Each scene: how long it plays, a reset to its first state, and its steps.
     var scenes = {
         dashboard: { ms: 9000, reset: function () {
-            hide($('[data-demo="timeline-new"]'));
-            var rec = $('[data-demo="record"]');
+            var fresh = one('[data-demo="timeline-new"]');
+            if (fresh) { fresh.hidden = true; }
+            var rec = one('[data-demo="record"]');
             if (rec) { rec.textContent = rec.getAttribute('data-text'); rec.classList.remove('bg-meadow'); rec.classList.add('bg-saddle'); }
         }, steps: function () {
-            $$('[data-count]').forEach(countUp);
-            later(3200, function () { tap($('[data-demo="record"]')); });
-            later(4400, function () {
-                var rec = $('[data-demo="record"]');
-                if (rec) { rec.textContent = 'Recorded ✓'; rec.classList.remove('bg-saddle'); rec.classList.add('bg-meadow'); }
+            all('[data-count]').forEach(countUp);
+            later(2400, function () {
+                var rec = one('[data-demo="record"]');
+                clickOn(rec, function () { rec.textContent = 'Recorded ✓'; rec.classList.remove('bg-saddle'); rec.classList.add('bg-meadow'); });
             });
-            later(5400, function () { show($('[data-demo="timeline-new"]')); });
+            later(4800, function () { var fresh = one('[data-demo="timeline-new"]'); if (fresh) { fresh.hidden = false; } });
         } },
-        horses: { ms: 12000, reset: function () {
+        horses: { ms: 16000, reset: function () {
             go('horses', 'list');
-            $$('[data-demo-lit]').forEach(function (el) { el.classList.remove('mk-lit'); el.removeAttribute('data-demo-lit'); });
-            $$('[data-demo^="new-"]').forEach(hide);
+            all('[data-panel="horses"] [data-view]').forEach(function (v) { if (v.querySelector('[data-sub]')) { sub(v, 'overview'); } });
         }, steps: function () {
-            later(1800, function () { var row = $('[data-go="horse-pip"]'); row.classList.add('mk-lit'); row.setAttribute('data-demo-lit', ''); });
-            later(3200, function () { go('horses', 'horse-pip'); });
-            later(6800, function () { show($('[data-demo="new-pip"]')); });
+            later(400, function () { clickOn(one('[data-nav="horses"]')); });
+            later(2000, function () { clickOn(one('[data-view="list"] [data-go="horse-bramble"]'), function () { go('horses', 'horse-bramble'); }); });
+            later(4600, function () { clickOn(one('[data-view="horse-bramble"] [data-go="horse-duke"]'), function () { go('horses', 'horse-duke'); }); });
+            later(6800, function () { clickOn(one('[data-view="horse-duke"] [data-go="horse-pip"]'), function () { go('horses', 'horse-pip'); }); });
+            later(9000, function () { var v = one('[data-view="horse-pip"]'); clickOn(v.querySelector('[data-sub="timeline"]'), function () { sub(v, 'timeline'); }); });
+            later(12400, function () { var v = one('[data-view="horse-pip"]'); clickOn(v.querySelector('[data-sub="breeding"]'), function () { sub(v, 'breeding'); }); });
         } },
         maps: { ms: 11000, reset: function () {
-            go('maps', 'map', $('[data-panel="maps"] [data-go="map"]'));
+            go('maps', 'map', one('[data-panel="maps"] [data-go="map"]'));
             pick('top');
-            var mover = $('[data-demo="mover"]');
+            var mover = one('[data-demo="mover"]');
             if (mover) { mover.style.transform = ''; }
         }, steps: function () {
-            later(2600, function () { var m = $('[data-demo="mover"]'); if (m) { m.style.transform = 'translate(118px, 22px)'; } });
-            later(4800, function () { pick('meadow'); });
-            later(7400, function () { pick('winter'); });
+            later(400, function () { clickOn(one('[data-nav="maps"]')); });
+            later(1800, function () { var m = one('[data-demo="mover"]'); if (m) { m.style.transform = 'translate(118px, 22px)'; } });
+            later(3800, function () { clickOn(one('[data-pick-field="meadow"]'), function () { pick('meadow'); }); });
+            later(6200, function () { clickOn(one('[data-pick-field="winter"]'), function () { pick('winter'); }); });
+            later(8600, function () { var b = one('[data-panel="maps"] [data-go="cards"]'); clickOn(b, function () { go('maps', 'cards', b); }); });
         } },
-        invoicing: { ms: 13000, reset: function () {
-            go('invoicing', 'list');
-            $$('[data-demo-row]').forEach(function (r) { r.hidden = false; r.classList.remove('mk-row-in'); r.style.animationDelay = ''; });
-            $$('[data-demo="sent-badge"]').forEach(hide);
-            $$('[data-demo="draft-badge"]').forEach(show);
+        owners: { ms: 15000, reset: function () {
+            go('owners', 'list');
+            all('[data-panel="owners"] [data-view^="new-"]').forEach(function (v) { send(v, false); });
         }, steps: function () {
-            var rows = $$('[data-demo-row]');
-            later(800, function () { tap($('[data-demo="generate"]')); rows.forEach(function (r) { r.hidden = true; }); });
+            later(400, function () { clickOn(one('[data-nav="owners"]')); });
+            later(1800, function () { clickOn(one('[data-panel="owners"] [data-view="list"] [data-go="owner-amy"]'), function () { go('owners', 'owner-amy'); }); });
+            later(4800, function () { clickOn(one('[data-view="owner-amy"] [data-go="create-amy"]'), function () { go('owners', 'create-amy'); }); });
+            later(8400, function () { clickOn(one('[data-view="create-amy"] [data-go="new-amy"]'), function () { go('owners', 'new-amy'); }); });
+            later(11200, function () { var v = one('[data-view="new-amy"]'); clickOn(v.querySelector('[data-send]'), function () { send(v, true); }); });
+        } },
+        invoicing: { ms: 11000, reset: function () {
+            go('invoicing', 'list');
+            all('[data-demo-row]').forEach(function (r) { r.hidden = false; r.classList.remove('mk-row-in'); r.style.animationDelay = ''; });
+        }, steps: function () {
+            var rows = all('[data-demo-row]');
+            later(400, function () { clickOn(one('[data-demo="generate"]'), function () { rows.forEach(function (r) { r.hidden = true; }); }); });
             later(1800, function () {
                 rows.forEach(function (r, i) { r.style.animationDelay = (i * 180) + 'ms'; r.hidden = false; r.classList.add('mk-row-in'); });
             });
-            later(5200, function () { go('invoicing', 'inv2'); });
-            later(7400, function () { tap($('[data-view="inv2"] [data-demo="send"]')); });
-            later(8400, function () {
-                $$('[data-demo="draft-badge"]').forEach(hide);
-                $$('[data-demo="sent-badge"]').forEach(show);
-            });
+            later(5200, function () { clickOn(one('[data-panel="invoicing"] [data-go="inv6"]'), function () { go('invoicing', 'inv6'); }); });
         } }
     };
 
@@ -377,7 +415,8 @@
         playing = false;
         clear();
         // A scene may have hidden the invoice rows to show them arriving.
-        $$('[data-demo-row]').forEach(function (r) { r.hidden = false; });
+        all('[data-demo-row]').forEach(function (r) { r.hidden = false; });
+        if (cursor) { cursor.classList.remove('is-on'); }
         if (bar) { bar.style.transition = 'none'; bar.style.width = '0'; }
         setLabel();
     }
@@ -398,7 +437,7 @@
         });
     }
     ['pointerdown', 'keydown'].forEach(function (type) {
-        box.addEventListener(type, function (e) { if (!e.target.closest('[data-autoplay-toggle]')) { takeOver(); } }, true);
+        box.addEventListener(type, function (e) { if (e.isTrusted && !e.target.closest('[data-autoplay-toggle]')) { takeOver(); } }, true);
     });
     new IntersectionObserver(function (entries) {
         onScreen = entries[0].isIntersecting;

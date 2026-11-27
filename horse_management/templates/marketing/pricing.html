@@ -6,7 +6,7 @@
 {% include "marketing/_page_intro.html" with eyebrow="Pricing" title="One price per horse, per month" intro="Two plans, with onboarding included. All prices exclude VAT." %}
 
 {# ── The two plans ── #}
-<section class="bg-white" aria-label="Plans">
+<section class="bg-sage-light/15" aria-label="Plans">
     <div class="mx-auto grid max-w-5xl items-stretch gap-6 px-4 pt-12 sm:px-6 md:grid-cols-2 lg:px-8">
         {% for plan in plans %}
         <article class="mk-reveal relative flex flex-col rounded-3xl border bg-white p-6 sm:p-7 transition duration-300 hover:shadow-xl hover:shadow-forest/10 {% if plan.recommended %}border-forest shadow-xl shadow-forest/10{% else %}border-sand{% endif %}" style="--d:{{ forloop.counter0 }}00ms" aria-labelledby="plan-{{ plan.key }}">
@@ -35,7 +35,7 @@
 The calculator. The server fills in the quote, so the page is right without
 the script; js/marketing.js does the same sum as marketing.content.quote().
 {% endcomment %}
-<section id="calculator" class="scroll-mt-20 bg-white" aria-labelledby="calc-title">
+<section id="calculator" class="scroll-mt-20 bg-sage-light/15" aria-labelledby="calc-title">
     <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
         <div class="mk-reveal mx-auto max-w-2xl text-center">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">Your price</p>
